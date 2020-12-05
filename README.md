@@ -1,7 +1,7 @@
 ## Setup:
 
 - Just like the labs, make a new directory in /ros_workspaces. 
-- Init a catkin workspace in a new /src in that directory. 
+- Initialize a catkin workspace in a new /src folder in that directory. 
 - Build workspace. 
 - Clone this repo into /src directory. 
 - Rebuild workspace. 
