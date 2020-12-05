@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>dummy_controller</name>
+  <name>decentralized_search</name>
   <version>0.0.0</version>
-  <description>The dummy_controller package</description>
+  <description>The decentralized_search package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
