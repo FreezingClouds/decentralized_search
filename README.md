@@ -1,4 +1,4 @@
-## How to setup:
+## Setup:
 
 - Just like the labs, make a new directory in /ros_workspaces. 
 - Init a catkin workspace in a new /src in that directory. 
@@ -33,7 +33,7 @@ catkin_make
 source devel/setup.bash
 ```
 
-## How to launch simulation:
+## Launching the simulation:
 
 - Source the workspace setup.bash file.
 - Roslaunch the launch file (currently named control_task_env) from this package.
