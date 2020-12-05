@@ -2,6 +2,7 @@
 
 import numpy as np
 import heapq
+from pursue_entities import Location
 
 class Map(object):
     def __init__(self, width, height, grid, resolution, origin):
@@ -40,6 +41,7 @@ class Map(object):
         valid = False
         while not valid:
             x, y = np.random.randint(self.x_max), np.random.randint(self.y_max)
+            valid = not self.is_obstacle(Location(x, y))
         return x, y
 
     def distance(self, agent1, agent2):

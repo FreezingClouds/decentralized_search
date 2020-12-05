@@ -4,6 +4,7 @@
 from pursue_entities import *
 from pursue_map import Map
 import rospy
+import numpy as np
 from nav_msgs.msg import OccupancyGrid
 from geometry_msgs.msg import Vector3
 
@@ -29,8 +30,8 @@ class Pursuit(object):
 
         # voxel_update: service to give pursuers new global map location (not a voxel) to travel to
         # evader_location: subscribe to message that publishes location of evader if available
-        s = rospy.Service('voxel_update', decentralized_search.srv.VoxelUpdate, self.receive_voxel_update)
-        rospy.Subscriber('evader_location', decentralized_search.msg.EvaderLocation, self.receive_evader_location, queue_size=1)
+        s = rospy.Service('/voxel_update', decentralized_search.srv.VoxelUpdate, self.receive_voxel_update)
+        rospy.Subscriber('/evader_location', decentralized_search.msg.EvaderLocation, self.receive_evader_location, queue_size=1)
         self.claimed_paths = {i: [] for i in range(self.num_pursuers)}
 
         rospy.spin()
@@ -46,7 +47,6 @@ class Pursuit(object):
     def receive_voxel_update(self, service_request):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
-        location = service_request.location
         agent_id = service_request.id
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
 
