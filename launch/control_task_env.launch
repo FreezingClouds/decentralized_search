@@ -9,7 +9,7 @@
 	      pkg="stdr_server" 
 	      name="stdr_server" 
               output="screen" 
-              args="$(find dummy_controller)/maps/control_task_map.yaml"/>
+              args="$(find decentralized_search)/maps/control_task_map.yaml"/>
 
 	<node pkg="tf" 
               type="static_transform_publisher" 
@@ -26,6 +26,6 @@
 	<node pkg="stdr_robot" 
               type="robot_handler" 
               name="$(anon robot_spawn)" 
-              args="add $(find dummy_controller)/robots/robot_no_sensors.yaml $(arg x) $(arg y) $(arg theta)" />
+              args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x) $(arg y) $(arg theta)" />
 
 </launch>
