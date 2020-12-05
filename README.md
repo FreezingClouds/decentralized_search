@@ -51,7 +51,7 @@ roslaunch dencentralized_search control_task_env.launch
 - Source the workspace setup.bash file.
 - Rosrun unicycle_control.py from this package with arguments 'robot0' and 'target'
 
-This will make robot0 attempt to naively travel to the 'target' TF frame published to the /tf topic.
+This will make robot0 attempt to naively travel to the 'target' TF frame published to the /tf topic (default location x=5, y=5 specified in launch file).
 
 ### Copypasta:
 ```
