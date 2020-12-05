@@ -26,7 +26,7 @@ class Map(object):
         neighbors.remove((location.x, location.y))
         neighbors = [Location(n[0], n[1]) for n in neighbors if 0 <= n[0] < self.x_max and 0 <= n[1] < self.y_max]
         neighbors = [n for n in neighbors if not self.is_obstacle(n)]
-        return return neighbors
+        return neighbors
 
     def initialize_swarm(self, swarm_size):
         for i in range(swarm_size):
@@ -36,7 +36,7 @@ class Map(object):
             self.num_swarm_points[x, y] += 1
         return
 
-    def get_random_voxel_without_obstacle():
+    def get_random_voxel_without_obstacle(self):
         valid = False
         while not valid:
             x, y = np.random.randint(self.x_max), np.random.randint(self.y_max)

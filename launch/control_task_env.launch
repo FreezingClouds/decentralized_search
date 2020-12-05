@@ -28,4 +28,6 @@
               name="$(anon robot_spawn)" 
               args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x) $(arg y) $(arg theta)" />
 
+    <node pkg="decentralized_search" type="pursue_wrapper.py" name="map_multi_agent_manager" output="screen"/>
+
 </launch>

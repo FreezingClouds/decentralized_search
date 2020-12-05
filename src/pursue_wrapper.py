@@ -1,16 +1,17 @@
+#!/usr/bin/env python
 """ Wrapper for multi-agent search and capture. Pseudo-code outlined below"""
 
 from pursue_entities import *
 from pursue_map import Map
 import rospy
 from nav_msgs.msg import OccupancyGrid
-from std_msgs.msg import Vector3
+from geometry_msgs.msg import Vector3
 
 class Pursuit(object):
     def __init__(self, swarm_size=100, time_steps = 1000):
         # Map Initialization
-        occupancy_grid = rospy.wait_for_message('/map')
-        array_of_occupancy = occupancy_grid.data
+        occupancy_grid = rospy.wait_for_message('/map', OccupancyGrid)
+        array_of_occupancy = np.array(occupancy_grid.data)
         metadata = occupancy_grid.info
         grid = np.vstack(np.split(array_of_occupancy, metadata.height))  # split into metadata.height groups
 
@@ -45,22 +46,22 @@ class Pursuit(object):
     def receive_voxel_update(self, service_request):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
-            location = service_request.location
-            agent_id = service_request.id
-            x, y = self.map.location_to_voxel(service_request.x, service_request.y)
+        location = service_request.location
+        agent_id = service_request.id
+        x, y = self.map.location_to_voxel(service_request.x, service_request.y)
 
-            agent = self.pursuers[agent_id]
-            agent.curr_location = Location(x, y)
-            path = agent.get_path(self.map, self.claimed_paths.values(), self.map.evader_location)
+        agent = self.pursuers[agent_id]
+        agent.curr_location = Location(x, y)
+        path = agent.get_path(self.map, self.claimed_paths.values(), self.map.evader_location)
 
-            self.claimed_paths[agent_id] = path
-            new_location = path.pop(0)
-            coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
+        self.claimed_paths[agent_id] = path
+        new_location = path.pop(0)
+        coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
 
-            self.updated[agent_id] = True
-            if all(self.updated) or not self.map.evader_location:
-                self.update_swarm()
-                self.updated = [False] * self.num_pursuers
+        self.updated[agent_id] = True
+        if all(self.updated) or not self.map.evader_location:
+            self.update_swarm()
+            self.updated = [False] * self.num_pursuers
         return decentralized_search.srv.VoxelUpdateResponse(coord_x, coord_y)
 
     def update_swarm(self):
