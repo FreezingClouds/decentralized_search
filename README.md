@@ -1,4 +1,4 @@
-How to setup:
+## How to setup:
 
 - Just like the labs, make a new directory in /ros_workspaces. 
 - Init a catkin workspace in a new /src in that directory. 
@@ -7,10 +7,10 @@ How to setup:
 - Rebuild workspace. 
 - Clone stdr simulator into /src directory. 
 - Install it from package root directory. 
-- Rebuild workspace. 
+- Rebuild workspace (this might take awhile).
 
 
-Copypasta:
+### Copypasta:
 ```
 mkdir -p ~/ros_workspaces/beeboop/src
 cd ~/ros_workspaces/beeboop/src
@@ -31,4 +31,33 @@ rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO
 catkin_make
 
 source devel/setup.bash
+```
+
+## How to launch simulation:
+
+- Source the workspace setup.bash file.
+- Roslaunch the launch file (currently named control_task_env) from this package.
+
+### Copypasta:
+```
+cd ~/ros_workspaces/beeboop
+source devel/setup.bash
+roslaunch dencentralized_search control_task_env.launch
+```
+
+## Running the demo controller script:
+
+- Ensure all scripts in this package's /src directory are executable.
+- Source the workspace setup.bash file.
+- Rosrun unicycle_control.py from this package with arguments 'robot0' and 'target'
+
+This will make robot0 attempt to naively travel to the 'target' TF frame published to the /tf topic.
+
+### Copypasta:
+```
+cd ~/ros_workspaces/beeboop/src/decentralized_search/src
+chmod +x *.py
+cd ~/ros_workspaces/beeboop
+source devel/setup.bash
+rosrun decentralized_search unicycle_control.py robot0 target
 ```
