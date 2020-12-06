@@ -23,7 +23,7 @@
 	<include file="$(find stdr_gui)/launch/stdr_gui.launch"/>
 
 	<!-- Instantiate all robots -->
-	<include file="$(find decentralized_search)/launch/evader.launch"/>
+	<include file="$(find decentralized_search)/launch/pursuer_1.launch"/>
 
 
     <!-- Instantiate the multiagent manager-->
