@@ -1,6 +1,8 @@
 <launch>
 	<!-- Three Pursuers -->
 	<include file="$(find stdr_robot)/launch/robot_manager.launch" />
+	<arg name="node_start_delay" default="1.0" />
+
 	
 	<node type="stdr_server_node" 
 	      pkg="stdr_server" 
@@ -21,10 +23,8 @@
 	<include file="$(find stdr_gui)/launch/stdr_gui.launch"/>
 
 	<!-- Instantiate all robots -->
-	<include file="$(find decentralized_search)/launch/pursuer_1.launch"/>
-	<include file="$(find decentralized_search)/launch/pursuer_2.launch"/>
-	<include file="$(find decentralized_search)/launch/pursuer_3.launch"/>
 	<include file="$(find decentralized_search)/launch/evader.launch"/>
+
 
     <!-- Instantiate the multiagent manager-->
     <!--node pkg="decentralized_search" type="pursue_wrapper.py" name="map_multi_agent_manager" output="screen"/-->

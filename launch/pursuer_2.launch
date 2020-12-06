@@ -5,7 +5,7 @@
 
 	<node pkg="stdr_robot"
               type="robot_handler"
-              name="$(anon robot_spawn_1)"
+              name="albert"
               args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x_1) $(arg y_1) $(arg theta_1)" />
 
 </launch>

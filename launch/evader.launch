@@ -1,12 +1,12 @@
 <launch>
     <!-- Evader Node Here -->
-	<arg name="x_3" default="4" />
+	<arg name="x_3" default="8" />
 	<arg name="y_3" default="2" />
 	<arg name="theta_3" default="0" />
 
 	<node pkg="stdr_robot"
               type="robot_handler"
-              name="$(anon robot_spawn_3)"
+              name="raylen"
               args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x_3) $(arg y_3) $(arg theta_3)" />
 
 </launch>
