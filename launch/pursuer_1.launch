@@ -8,4 +8,10 @@
               name="austin"
               args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x_0) $(arg y_0) $(arg theta_0)" />
 
+    <node name="austin_control" pkg="decentralized_search" type="control.py" output="screen">
+        <param name="robot_id" value="0" />
+        <param name="x" value="$(eval arg('x_0'))" />
+        <param name="y" value="$(eval arg('y_0'))" />
+    </node>
+
 </launch>

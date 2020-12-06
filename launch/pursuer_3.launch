@@ -8,4 +8,9 @@
               name="andy"
               args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x_2) $(arg y_2) $(arg theta_2)" />
 
+    <node name="andy_control" pkg="decentralized_search" type="control.py" output="screen">
+        <param name="robot_id" value="2" />
+        <param name="x" value="$(eval arg('x_2'))" />
+        <param name="y" value="$(eval arg('y_2'))" />
+    </node>
 </launch>

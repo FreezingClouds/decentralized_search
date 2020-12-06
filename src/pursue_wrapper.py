@@ -6,7 +6,8 @@ from pursue_map import Map
 import rospy
 import numpy as np
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import Vector3
+from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
+from decentralized_search.msg import EvaderLocation
 
 class Pursuit(object):
     def __init__(self, swarm_size=100, time_steps = 1000):
@@ -31,9 +32,11 @@ class Pursuit(object):
 
         # voxel_update: service to give pursuers new global map location (not a voxel) to travel to
         # evader_location: subscribe to message that publishes location of evader if available
-        s = rospy.Service('/voxel_update', decentralized_search.srv.VoxelUpdate, self.receive_voxel_update)
-        rospy.Subscriber('/evader_location', decentralized_search.msg.EvaderLocation, self.receive_evader_location, queue_size=1)
+        s = rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)
+        rospy.Subscriber('/evader_location', EvaderLocation, self.receive_evader_location, queue_size=1)
         self.claimed_paths = {i: [] for i in range(self.num_pursuers)}
+
+        print('Finished Setup')
 
         rospy.spin()
         return
@@ -48,7 +51,7 @@ class Pursuit(object):
     def receive_voxel_update(self, service_request):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
-        if service_request.id < 3
+        if service_request.id < 3:
             agent_id = service_request.id
             x, y = self.map.location_to_voxel(service_request.x, service_request.y)
 
@@ -61,27 +64,27 @@ class Pursuit(object):
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
 
             self.updated[agent_id] = True
-            if all(self.updated) or not self.map.evader_location:
+            if all(self.updated) or self.map.evader_location:
                 self.update_swarm()
                 self.updated = [False] * self.num_pursuers
-            return decentralized_search.srv.VoxelUpdateResponse(coord_x, coord_y)
+            return VoxelUpdateResponse(coord_x, coord_y)
 
         xe, ye = self.map.location_to_voxel(service_request.x, service_request.y)
         targetPoint = np.array([xe, ye])
         for i in range(-1, 2):
             for k in range(-1, 2):
                 currPoint = np.array([xe + i, ye + k])
-                if not occupied(currPoint):
-                    if distanceSum(currPoint) > distanceSum(targetPoint):
+                if not self.occupied(currPoint):
+                    if self.distanceSum(currPoint) > self.distanceSum(targetPoint):
                         targetPoint = currPoint
-        return decentralized_search.srv.VoxelUpdateResponse(targetPoint[0], targetPoint[1])
+        return VoxelUpdateResponse(targetPoint[0], targetPoint[1])
 
     def update_swarm(self):
         for point in self.map.swarm:
-            point.move_one_step(self)
+            point.move_one_step(self, self.map)
         return
 
-    def distanceSum(p):
+    def distanceSum(self, p):
         eLoc = Location(p[0], p[1])
         p1 = self.pursuers[0].curr_location
         p2 = self.pursuers[1].curr_location
@@ -91,8 +94,8 @@ class Pursuit(object):
         dist3 = eLoc.distance(p3)
         return dist1 + dist2 + dist3
 
-    def occupied(p):
-        if p[0] > self.map.x_max || p[0] < 0 || p[1] > self.map.y_max || p[1] < 0:
+    def occupied(self, p):
+        if p[0] > self.map.x_max or p[0] < 0 or p[1] > self.map.y_max or p[1] < 0:
             return True
         if self.map.is_obstacle(Location(p[0], p[1])):
             return True

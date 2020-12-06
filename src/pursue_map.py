@@ -38,7 +38,7 @@ class Map(object):
         return
 
     def get_random_voxel_without_obstacle(self):
-        valid = False
+        valid, x, y = False, None, None
         while not valid:
             x, y = np.random.randint(self.x_max), np.random.randint(self.y_max)
             valid = not self.is_obstacle(Location(x, y))
@@ -69,10 +69,10 @@ class Map(object):
         return
 
     def get_path(self, location1, location2):
-        # TODO: Debug this method
+        # NOTE: All locations in this method are tuples for efficiency
         assert not self.is_obstacle(location1) and not self.is_obstacle(location2)
-        start = (location1[0], location1[1])
-        finish = (location2[0], location2[1])
+        start = (location1.x, location1.y)
+        finish = (location2.x, location2.y)
 
         priority_queue = []
         node_to_prev_node = {}  # maps a node to the previous node that had called dijkstra on it
@@ -84,38 +84,41 @@ class Map(object):
         while True:
            if len(priority_queue) == 0:
                break
-           distance_to_curr, curr_node = heapq.heappop(priority_queue)
-           visited.add(curr_node)
-           if curr_node == finish:
+           distance_to_curr, curr_location = heapq.heappop(priority_queue)
+           visited.add(curr_location)
+           if curr_location == finish:
                break
 
-           neighbors = self.get_voxel_neighbors(Location(curr_node[0], curr_node[1]))
+           neighbors = self.get_voxel_neighbors(Location(curr_location[0], curr_location[1]))
+           neighbors = [(n.x, n.y) for n in neighbors]
 
            for n in neighbors:
-               if (n.x, n.y) not in visited:  # if it hasn't been visited, there's a possibility of getting better path
+               if n in visited:  # if it hasn't been visited, there's a possibility of getting better path
                    nodes_in_pq = (list(map(lambda x: x[1], priority_queue)))
                    if n in nodes_in_pq:  # if it's currently in the pq, update the priority
                        index = nodes_in_pq.index(n)
-                       curr_dist = distance_to_curr + self.dist(n, curr_node)
+                       curr_dist = distance_to_curr + self.get_dist_between_tuples(curr_location, n)
                        prev_dist = priority_queue[index][0]
                        if curr_dist < prev_dist:
                            priority_queue[index] = (curr_dist, n)
-                           node_to_prev_node[n] = curr_node
+                           node_to_prev_node[n] = curr_location
                    else:  # otherwise add it to the pq
-                       heapq.heappush(priority_queue, (distance_to_curr + self.dist(n, curr_node), n))
-                       node_to_prev_node[n] = curr_node
-           prev_node = curr_node
+                       heapq.heappush(priority_queue, (distance_to_curr + self.get_dist_between_tuples(curr_location, n, n)))
+                       node_to_prev_node[n] = curr_location
 
         # Getting the path:
         if finish not in node_to_prev_node.keys():
-           return [start]  # Returns only the first node if there is no path
+           return self.tuples_to_locations([start])  # Returns only the first node if there is no path
 
         curr_node = finish
         path = [finish]
         while curr_node != start:
            curr_node = node_to_prev_node[curr_node]
            path.insert(0, curr_node)
-        return path
+        return self.tuples_to_locations(path)
 
-    def dist(self, tup1, tup2):
-        return ((tup1[0] - tup2[0]) ** 2 + (tup1[1] - tup2[1]) ** 2) ** (1/2)
+    def tuples_to_locations(self, list_of_tuples):
+        return [Location(t[0], t[1]) for t in list_of_tuples]
+
+    def get_dist_between_tuples(self, tup1, tup2):
+        return np.sqrt((tup1[0] - tup2[0]) ** 2 + (tup1[1] - tup2[1]) ** 2)
