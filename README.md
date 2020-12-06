@@ -61,3 +61,15 @@ cd ~/ros_workspaces/beeboop
 source devel/setup.bash
 rosrun decentralized_search unicycle_control.py robot0 target
 ```
+
+## Running the Decentralized Search Code:
+
+- For unfathomable reasons, generating all nodes with one launch file does not work properly with STDR. So, we set up a bash file to launch multiple launches with one command.
+
+```
+cd ~/ros_workspaces/beeboop
+source devel/setup.bash
+cd ~/ros_workspaces/beeboop/src/decentralized_search
+chmod +x launch.sh
+./launch.sh
+```
