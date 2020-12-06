@@ -42,7 +42,7 @@ source devel/setup.bash
 ```
 cd ~/ros_workspaces/beeboop
 source devel/setup.bash
-roslaunch dencentralized_search control_task_env.launch
+roslaunch decentralized_search control_task_env.launch
 ```
 
 ## Running the demo controller script:
