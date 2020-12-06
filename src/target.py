@@ -4,6 +4,7 @@ import tf2_ros
 import tf2_msgs.msg
 import geometry_msgs.msg
 
+# NOTE: I made a mistake. We are no longer explicitly using this file. Please revert back to original target.py if needed - Austin
 class FixedTFBroadcaster:
     def __init__(self, robot_id):
         self.id = robot_id
@@ -31,6 +32,7 @@ class FixedTFBroadcaster:
 
     def receive_new_target(self, msg):
         self.x, self.y = msg.x, msg.y
+
 
 if __name__ == '__main__':
     rospy.init_node('dummy_name', anonymous=True)

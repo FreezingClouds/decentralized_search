@@ -9,7 +9,4 @@
               name="$(anon robot_spawn_3)"
               args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x_3) $(arg y_3) $(arg theta_3)" />
 
-    <node name="target_3" pkg="decentralized_search" type="target.py" output="screen">
-        <param name= "robot_id" value="3"/>
-    </node>
 </launch>
