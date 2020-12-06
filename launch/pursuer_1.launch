@@ -1,0 +1,15 @@
+<launch>
+    <arg name="x_0" default="1" />
+	<arg name="y_0" default="2" />
+	<arg name="theta_0" default="0" />
+
+	<node pkg="stdr_robot"
+              type="robot_handler"
+              name="$(anon robot_spawn_0)"
+              args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x_0) $(arg y_0) $(arg theta_0)" />
+
+    <node name="target_0" pkg="decentralized_search" type="target.py" output="screen" clear_params="true">
+        <param name="robot_id" value="0"/>
+    </node>
+
+</launch>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """ Wrapper for multi-agent search and capture. Pseudo-code outlined below"""
 
-from pursue_entities import *
+from pursue_entities import Location, Agent, SwarmPoint
 from pursue_map import Map
 import rospy
 import numpy as np
@@ -19,14 +19,12 @@ class Pursuit(object):
         self.map = Map(metadata.width, metadata.height, grid, metadata.resolution, metadata.origin)
         self.map.initialize_swarm(swarm_size)
 
-
         # Pursuer Initialization (random initial location...subject to change)
         self.num_pursuers = 3
         for i in range(self.num_pursuers):
             x, y = self.map.get_random_voxel_without_obstacle()
             self.pursuers = [Agent(i, x, y) for i in range(self.num_pursuers)]
         self.updated = [False] * self.num_pursuers
-
 
         # voxel_update: service to give pursuers new global map location (not a voxel) to travel to
         # evader_location: subscribe to message that publishes location of evader if available
@@ -38,7 +36,7 @@ class Pursuit(object):
         return
 
     def receive_evader_location(self, msg):
-    	# Callback for receiving evader location.
+        # Callback for receiving evader location.
         if msg.found:
             self.map.evader_location = Location(msg.x, msg.y)
         else:

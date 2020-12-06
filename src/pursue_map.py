@@ -2,7 +2,7 @@
 
 import numpy as np
 import heapq
-from pursue_entities import Location
+from pursue_entities import Location, SwarmPoint
 
 class Map(object):
     def __init__(self, width, height, grid, resolution, origin):

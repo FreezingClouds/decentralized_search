@@ -1,8 +1,5 @@
 <launch>
-	<arg name="x" default="1" />	
-	<arg name="y" default="2" />
-	<arg name="theta" default="0" />
-
+	<!-- Three Pursuers -->
 	<include file="$(find stdr_robot)/launch/robot_manager.launch" />
 	
 	<node type="stdr_server_node" 
@@ -22,12 +19,14 @@
               args="5 5 0 0 0 0  world target 100" />
 
 	<include file="$(find stdr_gui)/launch/stdr_gui.launch"/>
-	
-	<node pkg="stdr_robot" 
-              type="robot_handler" 
-              name="$(anon robot_spawn)" 
-              args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x) $(arg y) $(arg theta)" />
 
-    <node pkg="decentralized_search" type="pursue_wrapper.py" name="map_multi_agent_manager" output="screen"/>
+	<!-- Instantiate all robots -->
+	<include file="$(find decentralized_search)/launch/pursuer_1.launch"/>
+	<include file="$(find decentralized_search)/launch/pursuer_2.launch"/>
+	<include file="$(find decentralized_search)/launch/pursuer_3.launch"/>
+	<include file="$(find decentralized_search)/launch/evader.launch"/>
+
+    <!-- Instantiate the multiagent manager-->
+    <!--node pkg="decentralized_search" type="pursue_wrapper.py" name="map_multi_agent_manager" output="screen"/-->
 
 </launch>
