@@ -14,7 +14,7 @@ class AgentNode(object):
         self.id = robot_id
         self.request_new_location = rospy.ServiceProxy("/voxel_update", VoxelUpdate)
         self.pub = rospy.Publisher("/robot" + str(self.id) + "/cmd_vel", Twist, queue_size=10)
-        self.pub_tf = rospy.Publisher("/tf" + str(self.id), tf2_msgs.msg.TFMessage, queue_size=1)
+        self.pub_tf = rospy.Publisher("/tf", tf2_msgs.msg.TFMessage, queue_size=1)
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
         self.r = rospy.Rate(10)
@@ -28,14 +28,12 @@ class AgentNode(object):
     def run_control_loop(self):
         while not rospy.is_shutdown():
             request = VoxelUpdateRequest(self.curr_x, self.curr_y, self.id)
-            print()
             response = self.request_new_location(self.curr_x, self.curr_y, self.id)
             self.move_to_location(response.x, response.y)
             self.curr_x, self.curr_y = response.x, response.y
 
     def move_to_location(self, x, y):
         self.handle_changing_target_frame(x, y)
-        rospy.sleep(.1)
         self.move_to_frame(x, y, "robot" + str(self.id), "target" + str(self.id))
 
     def move_to_frame(self, x, y, robot_frame, target_frame):
@@ -51,7 +49,6 @@ class AgentNode(object):
                     return
                 control_command.linear.x = self.K1 * dx
                 control_command.angular.z = self.K2 * dy
-                print(control_command.linear.x, control_command.angular.z)
 
                 self.pub.publish(control_command)
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
