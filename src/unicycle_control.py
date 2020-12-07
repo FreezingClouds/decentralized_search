@@ -9,7 +9,7 @@ from geometry_msgs.msg import Twist
 tol = 0.05
 
 def moveTo(robot_frame, target_frame):
-  pub = rospy.Publisher("/robot0/cmd_vel", Twist, queue_size=10)
+  pub = rospy.Publisher("/" + robot_frame + "/cmd_vel", Twist, queue_size=10)
   tfBuffer = tf2_ros.Buffer()
   tfListener = tf2_ros.TransformListener(tfBuffer)
   r = rospy.Rate(10)

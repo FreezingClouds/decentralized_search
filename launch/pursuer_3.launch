@@ -6,7 +6,7 @@
     <node pkg="stdr_robot"
               type="robot_handler"
               name="andy"
-              args="add $(find decentralized_search)/robots/robot_no_sensors.yaml $(arg x_2) $(arg y_2) $(arg theta_2)" />
+              args="add $(find decentralized_search)/robots/pursuer_robot.yaml $(arg x_2) $(arg y_2) $(arg theta_2)" />
 
     <node name="andy_control" pkg="decentralized_search" type="control.py" output="screen">
         <param name="robot_id" value="2" />
