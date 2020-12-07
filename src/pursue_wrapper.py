@@ -9,6 +9,7 @@ from nav_msgs.msg import OccupancyGrid
 from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
 from decentralized_search.msg import EvaderLocation
 
+
 class Pursuit(object):
     def __init__(self, swarm_size=100, time_steps = 1000):
         # Map Initialization
@@ -22,10 +23,10 @@ class Pursuit(object):
 
         # Pursuer Initialization (random initial location...subject to change)
         self.num_pursuers = 3
+        self.updated = [False] * self.num_pursuers
         for i in range(self.num_pursuers):
             x, y = self.map.get_random_voxel_without_obstacle()
             self.pursuers = [Agent(i, x, y) for i in range(self.num_pursuers)]
-        self.updated = [False] * self.num_pursuers
 
         xe, ye = self.map.get_random_voxel_without_obstacle()
         self.evader = Agent(3, xe, ye)
@@ -100,6 +101,7 @@ class Pursuit(object):
         if self.map.is_obstacle(Location(p[0], p[1])):
             return True
         return False
+
 
 if __name__ == '__main__':
     rospy.init_node('dummy', anonymous=True)

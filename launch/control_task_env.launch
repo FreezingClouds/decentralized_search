@@ -29,4 +29,7 @@
     <!-- Instantiate the multiagent manager-->
     <node pkg="decentralized_search" type="pursue_wrapper.py" name="map_multi_agent_manager" output="screen"/>
 
+    <!-- Instantiate TF Target publisher -->
+    <node pkg="decentralized_search" type="target.py" name="target_publisher" output="screen"/>
+
 </launch>

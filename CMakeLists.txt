@@ -59,6 +59,7 @@ add_message_files(
 add_service_files(
    FILES
    VoxelUpdate.srv
+   GoalUpdate.srv
 )
 
 ## Generate actions in the 'action' folder

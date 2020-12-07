@@ -5,7 +5,7 @@ import tf2_msgs.msg
 
 from geometry_msgs.msg import Vector3, Twist, TransformStamped
 from geometry_msgs.msg import Twist
-from decentralized_search.srv import VoxelUpdate, VoxelUpdateRequest
+from decentralized_search.srv import VoxelUpdate, GoalUpdate
 
 tol = 0.05
 
@@ -14,7 +14,8 @@ class AgentNode(object):
         self.id = robot_id
         self.request_new_location = rospy.ServiceProxy("/voxel_update", VoxelUpdate)
         self.pub = rospy.Publisher("/robot" + str(self.id) + "/cmd_vel", Twist, queue_size=10)
-        self.pub_tf = rospy.Publisher("/tf", tf2_msgs.msg.TFMessage, queue_size=1)
+        self.pub_tf = rospy.Publisher("/tf", tf2_msgs.msg.TFMessage, queue_size=10)
+        self.service_goal = rospy.ServiceProxy("/goals", GoalUpdate)
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
         self.r = rospy.Rate(10)
@@ -27,20 +28,21 @@ class AgentNode(object):
 
     def run_control_loop(self):
         while not rospy.is_shutdown():
-            request = VoxelUpdateRequest(self.curr_x, self.curr_y, self.id)
+            rospy.wait_for_service("/voxel_update")
             response = self.request_new_location(self.curr_x, self.curr_y, self.id)
             self.move_to_location(response.x, response.y)
-            self.curr_x, self.curr_y = response.x, response.y
 
     def move_to_location(self, x, y):
-        self.handle_changing_target_frame(x, y)
-        self.move_to_frame(x, y, "robot" + str(self.id), "target" + str(self.id))
+        rospy.wait_for_service("/goals")
+        response = self.service_goal(x, y, self.id)
+        if response.received:
+            self.move_to_frame("robot" + str(self.id), "target" + str(self.id))
+            self.curr_x, self.curr_y = x, y
 
-    def move_to_frame(self, x, y, robot_frame, target_frame):
+    def move_to_frame(self, robot_frame, target_frame):
         while not rospy.is_shutdown():
             try:
-                self.handle_changing_target_frame(x, y)
-                trans = self.tfBuffer.lookup_transform(robot_frame, target_frame, rospy.Time())
+                trans = self.tfBuffer.lookup_transform(robot_frame, target_frame, rospy.Time(0))
                 dx = trans.transform.translation.x
                 dy = trans.transform.translation.y
                 control_command = Twist()
@@ -52,24 +54,8 @@ class AgentNode(object):
 
                 self.pub.publish(control_command)
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-                print(e)
                 pass
             self.r.sleep()
-
-    def handle_changing_target_frame(self, x, y):
-        t = TransformStamped()
-        t.header.frame_id = "world"
-        t.header.stamp = rospy.Time.now()
-        t.child_frame_id = "target" + str(self.id)
-        t.transform.translation.x = x
-        t.transform.translation.y = y
-        t.transform.translation.z = 0.0
-        t.transform.rotation.x = 0.0
-        t.transform.rotation.y = 0.0
-        t.transform.rotation.z = 0.0
-        t.transform.rotation.w = 1.0
-        tfm = tf2_msgs.msg.TFMessage([t])
-        self.pub_tf.publish(tfm)
 
 
 if __name__ == '__main__':
