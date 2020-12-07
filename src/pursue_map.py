@@ -3,13 +3,21 @@
 import numpy as np
 import heapq
 from pursue_entities import Location, SwarmPoint
+import rospy
+from skimage.measure import block_reduce
 
 class Map(object):
-    def __init__(self, width, height, grid, resolution, origin):
-        self.x_max = width
-        self.y_max = height
-        self.occupancy = grid
-        self.meters_per_cell = resolution
+    def __init__(self, width, height, grid, resolution, origin, shrinkage=1):
+        if shrinkage < 1:
+            rospy.signal_shutdown('Shrinkage should not be <1. The map is dense enough already you donut.')
+            return
+        if width % shrinkage != 0 or height % shrinkage != 0:
+            rospy.signal_shutdown('Shrinkage not divisible by width or height you donut')
+
+        self.occupancy = self.shrink_map(grid, shrinkage)
+        self.x_max = self.occupancy.shape[0]
+        self.y_max = self.occupancy.shape[1]
+        self.meters_per_cell = resolution * shrinkage
         self.pose_origin = origin
         self.num_swarm_points = np.zeros((self.x_max, self.y_max))
 
@@ -17,6 +25,11 @@ class Map(object):
         self.evader_detected = False
         self.evader_location = None
         return
+
+    def shrink_map(self, grid, shrinkage):
+        # Convolve with specific square kernel of all ones
+        size = (shrinkage, shrinkage)
+        return block_reduce(grid, block_size=size, func=np.any)
 
     def get_voxel_neighbors(self, location, distance=1):
         all_x_deltas, all_y_deltas = range(-distance, distance+1), range(-distance, distance+1)
@@ -69,7 +82,7 @@ class Map(object):
         return
 
     def get_path(self, location1, location2):
-        # NOTE: All locations in this method are tuples for efficiency
+        # NOTE: All locations in this method are tuples representing voxels for efficiency
         assert not self.is_obstacle(location1) and not self.is_obstacle(location2)
         start = (location1.x, location1.y)
         finish = (location2.x, location2.y)
@@ -93,22 +106,23 @@ class Map(object):
            neighbors = [(n.x, n.y) for n in neighbors]
 
            for n in neighbors:
-               if n in visited:  # if it hasn't been visited, there's a possibility of getting better path
+               if n not in visited:  # if it hasn't been visited, there's a possibility of getting better path
                    nodes_in_pq = (list(map(lambda x: x[1], priority_queue)))
                    if n in nodes_in_pq:  # if it's currently in the pq, update the priority
                        index = nodes_in_pq.index(n)
-                       curr_dist = distance_to_curr + self.get_dist_between_tuples(curr_location, n)
-                       prev_dist = priority_queue[index][0]
-                       if curr_dist < prev_dist:
-                           priority_queue[index] = (curr_dist, n)
+                       curr_neighbor_dist = distance_to_curr + self.get_dist_between_tuples(curr_location, n)
+                       prev_dist = priority_queue[index][0] - self.get_dist_between_tuples(n, finish)  # Subtract out heuristic
+                       if curr_neighbor_dist < prev_dist:
+                           priority_queue[index] = (curr_neighbor_dist + self.get_dist_between_tuples(n, finish), n)  # Add heuristic
                            node_to_prev_node[n] = curr_location
                    else:  # otherwise add it to the pq
-                       heapq.heappush(priority_queue, (distance_to_curr + self.get_dist_between_tuples(curr_location, n, n)))
+                       heapq.heappush(priority_queue, (distance_to_curr + self.get_dist_between_tuples(curr_location, n) + self.get_dist_between_tuples(n, finish), n))
                        node_to_prev_node[n] = curr_location
+        # print(finish in node_to_prev_node.keys())
 
         # Getting the path:
         if finish not in node_to_prev_node.keys():
-           return self.tuples_to_locations([start])  # Returns only the first node if there is no path
+            return self.tuples_to_locations([start])  # Returns only the first node if there is no path
 
         curr_node = finish
         path = [finish]
@@ -116,6 +130,8 @@ class Map(object):
            curr_node = node_to_prev_node[curr_node]
            path.insert(0, curr_node)
         return self.tuples_to_locations(path)
+
+
 
     def tuples_to_locations(self, list_of_tuples):
         return [Location(t[0], t[1]) for t in list_of_tuples]

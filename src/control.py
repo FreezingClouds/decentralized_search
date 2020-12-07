@@ -7,7 +7,7 @@ from geometry_msgs.msg import Vector3, Twist, TransformStamped
 from geometry_msgs.msg import Twist
 from decentralized_search.srv import VoxelUpdate, GoalUpdate
 
-tol = 0.05
+tol = 0.1
 
 class AgentNode(object):
     def __init__(self, robot_id, initial_x, initial_y):
@@ -46,6 +46,7 @@ class AgentNode(object):
                 dx = trans.transform.translation.x
                 dy = trans.transform.translation.y
                 control_command = Twist()
+                print(dx ** 2 + dy ** 2, tol ** 2)
                 if dx ** 2 + dy ** 2 < tol ** 2:
                     self.pub.publish(control_command)
                     return

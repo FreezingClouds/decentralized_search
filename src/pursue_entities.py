@@ -26,6 +26,7 @@ class Agent(object):
         map.detected_evader(evader_location)
 
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
+            # TODO: Change this to distance between different paths instead of intersections
             self.counter, valid_path = 0, False
             locations = [s.curr_location for s in map.swarm]
             boundaries = [((max(loc.x - R, 0), min(loc.x + R, map.x_max)),
@@ -35,6 +36,8 @@ class Agent(object):
             locations_to_densities = iter(sorted(locations_to_densities.items(), key=lambda item: item[1], reverse=True))
             while not valid_path:
                 new_location, density = next(locations_to_densities)
+                if self.curr_location == new_location:
+                    continue
                 path = map.get_path(self.curr_location, new_location)
                 intersect_prev_paths = [set(path).intersection((set(prev_path))) for prev_path in claimed_paths]
                 too_similar_to_prev_path = [len(intersect) > max_intersection for intersect in intersect_prev_paths]
