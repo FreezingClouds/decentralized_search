@@ -61,8 +61,6 @@ class Pursuit(object):
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
             path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), self.map.evader_location)
-            if agent_id == 0:
-                print(len(path))
 
             claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, R))) for p in path])
             self.claimed_voxels[agent_id] = claimed
@@ -72,7 +70,7 @@ class Pursuit(object):
             self.updated[agent_id] = True
             self.check_swarm_detection()
             if all(self.updated) or self.map.evader_location:
-                self.update_swarm()  # NOTE: Is this if statement right? If in detection_zone, should update it NOW
+                self.update_swarm()
                 self.updated = [False] * self.num_pursuers
             return VoxelUpdateResponse(coord_x, coord_y)
 

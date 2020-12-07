@@ -65,6 +65,7 @@ class SwarmPoint(Agent):
             self.curr_location = map.evader_location
         else:  # evader not detected and swarmpoint not in detection zone
             neighbors = map.get_voxel_neighbors(self.curr_location)
+            neighbors.append(self.curr_location)
             neighbor_values = [self.compute_weighted_sum(neighbor_location, wrapper) for neighbor_location in neighbors]
             best_neighbor = np.argmin(neighbor_values)
             choice = neighbors[best_neighbor]
