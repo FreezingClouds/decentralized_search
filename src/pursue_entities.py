@@ -1,7 +1,6 @@
 import numpy as np
 from collections import OrderedDict
 import time
-from pursue_wrapper import Agent_Manager
 max_intersection = .5
 
 class Location(object):
@@ -16,6 +15,8 @@ class Location(object):
         return location.x == self.x and location.y == self.y
 
 class Agent(object):
+    detection_radius = 1  # defined in meters
+
     def __init__(self, id, x, y, update_every_k_steps=10):
         self.id = id
         self.curr_location = Location(x, y)
@@ -24,10 +25,9 @@ class Agent(object):
         self.counter = 0
         return
 
-    def get_path(self, map, claimed_voxels, evader_location=None, max_intersection = .5):
+    def get_path(self, map, claimed_voxels, evader_location=None, max_intersection=.5, r=1):
         self.counter += 1
         map.detected_evader(evader_location)
-        r = Agent_Manager.radius
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
             self.counter, valid_path = 0, False
             locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
