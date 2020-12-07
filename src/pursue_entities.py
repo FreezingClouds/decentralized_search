@@ -1,7 +1,7 @@
 import numpy as np
 from collections import OrderedDict
 
-R = 5
+R = 2
 max_intersection = 5
 
 class Location(object):
@@ -11,6 +11,9 @@ class Location(object):
 
     def distance(self, location):
         return np.sqrt(np.square(location.x - self.x) + np.square(location.y - self.y))
+
+    def equal_to(self, location):
+        return location.x == self.x and location.y == self.y
 
 class Agent(object):
     def __init__(self, id, x, y, update_every_k_steps = 5):
@@ -26,17 +29,18 @@ class Agent(object):
         map.detected_evader(evader_location)
 
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
-            # TODO: Change this to distance between different paths instead of intersections
+            # TODO: Change claimed_paths to be sets of nodes to avoid because within detection range of other agent.
+            # TODO: Then, pass into get_path and add an if statement to it. (Need Raylen's vision code for this)
             self.counter, valid_path = 0, False
             locations = [s.curr_location for s in map.swarm]
             boundaries = [((max(loc.x - R, 0), min(loc.x + R, map.x_max)),
                             (max(loc.y - R, 0), min(loc.y + R, map.y_max))) for loc in locations]
-            densities = [np.sum(map.num_swarm_points[x_bound[0]: x_bound[1], y_bound[0]: y_bound[1]]) for x_bound, y_bound in boundaries]
+            densities = [np.sum(map.num_swarm_points[x_bound[0]: x_bound[1] + 1, y_bound[0]: y_bound[1] + 1]) for x_bound, y_bound in boundaries]
             locations_to_densities = dict(zip(locations, densities))
             locations_to_densities = iter(sorted(locations_to_densities.items(), key=lambda item: item[1], reverse=True))
             while not valid_path:
                 new_location, density = next(locations_to_densities)
-                if self.curr_location == new_location:
+                if self.curr_location.equal_to(new_location):
                     continue
                 path = map.get_path(self.curr_location, new_location)
                 intersect_prev_paths = [set(path).intersection((set(prev_path))) for prev_path in claimed_paths]

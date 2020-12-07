@@ -45,7 +45,7 @@ class Map(object):
     def initialize_swarm(self, swarm_size):
         for i in range(swarm_size):
             x, y = self.get_random_voxel_without_obstacle()
-            alpha1, alpha2, alpha3 = np.random.uniform(size=3)
+            alpha1, alpha2, alpha3 = np.random.uniform(low=.3, high=.7, size=3)
             self.swarm.append(SwarmPoint(x, y, alpha1, alpha2, alpha3))
             self.num_swarm_points[x, y] += 1
         return
