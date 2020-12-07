@@ -1,8 +1,7 @@
 import numpy as np
 from collections import OrderedDict
 import time
-
-R = 2
+from pursue_wrapper import Agent_Manager
 max_intersection = .5
 
 class Location(object):
@@ -28,10 +27,11 @@ class Agent(object):
     def get_path(self, map, claimed_voxels, evader_location=None, max_intersection = .5):
         self.counter += 1
         map.detected_evader(evader_location)
+        r = Agent_Manager.radius
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
             self.counter, valid_path = 0, False
             locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
-            boundaries = [((max(loc.x - R, 0), min(loc.x + R, map.x_max)), (max(loc.y - R, 0), min(loc.y + R, map.y_max))) for loc in locations]
+            boundaries = [((max(loc.x - r, 0), min(loc.x + r, map.x_max)), (max(loc.y - r, 0), min(loc.y + r, map.y_max))) for loc in locations]
             densities = [np.sum(map.num_swarm_points[x_bound[0]: x_bound[1] + 1, y_bound[0]: y_bound[1] + 1]) for x_bound, y_bound in boundaries]
             locations_to_densities = dict(zip(locations, densities))
             locations_to_densities = iter(sorted(locations_to_densities.items(), key=lambda item: item[1], reverse=True))

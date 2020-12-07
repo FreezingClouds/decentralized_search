@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """ Wrapper for multi-agent search and capture. Pseudo-code outlined below"""
 
-from pursue_entities import Location, Agent, R
+from pursue_entities import Location, Agent,
 from pursue_map import Map
 import rospy
 import numpy as np
@@ -12,8 +12,9 @@ from decentralized_search.msg import EvaderLocation
 
 shrinkage = 25  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
+class Agent_Manager(object):
+    radius = 2  # Initialized in meters...converted to voxels later
 
-class Pursuit(object):
     def __init__(self, swarm_size=100):
         # Map Initialization
         occupancy_grid = rospy.wait_for_message('/map', OccupancyGrid)
@@ -21,6 +22,7 @@ class Pursuit(object):
         metadata = occupancy_grid.info
         grid = np.vstack(np.split(array_of_occupancy, metadata.height))  # split into metadata.height groups
         self.map = Map(metadata.width, metadata.height, grid, metadata.resolution, metadata.origin, shrinkage=shrinkage)
+        Agent_Manager.radius = int(Agent_Manager.radius / float(self.map.meters_per_cell))
 
         # Pursuer Initialization (random initial location...subject to change)
         self.num_pursuers = 3
@@ -62,7 +64,7 @@ class Pursuit(object):
             agent.curr_location = Location(x, y)
             path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), self.map.evader_location)
 
-            claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, R))) for p in path])
+            claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, Agent_Manager.radius))) for p in path])
             self.claimed_voxels[agent_id] = claimed
             new_location = path.pop(0)
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
@@ -115,4 +117,4 @@ class Pursuit(object):
 
 if __name__ == '__main__':
     rospy.init_node('dummy', anonymous=True)
-    Pursuit()
+    Agent_Manager()
