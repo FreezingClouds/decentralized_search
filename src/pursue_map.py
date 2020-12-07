@@ -118,7 +118,6 @@ class Map(object):
                    else:  # otherwise add it to the pq
                        heapq.heappush(priority_queue, (distance_to_curr + self.get_dist_between_tuples(curr_location, n) + self.get_dist_between_tuples(n, finish), n))
                        node_to_prev_node[n] = curr_location
-        # print(finish in node_to_prev_node.keys())
 
         # Getting the path:
         if finish not in node_to_prev_node.keys():
@@ -131,10 +130,11 @@ class Map(object):
            path.insert(0, curr_node)
         return self.tuples_to_locations(path)
 
-
-
     def tuples_to_locations(self, list_of_tuples):
         return [Location(t[0], t[1]) for t in list_of_tuples]
+
+    def locations_to_tuples(self, list_of_locations):
+        return [(l.x, l.y) for l in list_of_locations]
 
     def get_dist_between_tuples(self, tup1, tup2):
         return np.sqrt((tup1[0] - tup2[0]) ** 2 + (tup1[1] - tup2[1]) ** 2)

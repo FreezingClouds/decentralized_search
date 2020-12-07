@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 """ Wrapper for multi-agent search and capture. Pseudo-code outlined below"""
 
-from pursue_entities import Location, Agent, SwarmPoint
+from pursue_entities import Location, Agent, R
 from pursue_map import Map
 import rospy
 import numpy as np
+import matplotlib.pyplot as plt
 from nav_msgs.msg import OccupancyGrid
 from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
 from decentralized_search.msg import EvaderLocation
 
-shrinkage = 50 # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+shrinkage = 25  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 
 class Pursuit(object):
@@ -30,7 +31,7 @@ class Pursuit(object):
         # evader_location: subscribe to message that publishes location of evader if available
         rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)
         rospy.Subscriber('/evader_location', EvaderLocation, self.receive_evader_location, queue_size=1)
-        self.claimed_paths = {i: [] for i in range(self.num_pursuers)}
+        self.claimed_voxels = {i: set() for i in range(self.num_pursuers)}
 
         # Note: we are able to set random location because this gets overwritten anyway
         for i in range(self.num_pursuers):
@@ -59,14 +60,19 @@ class Pursuit(object):
 
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
-            path = agent.get_path(self.map, self.claimed_paths.values(), self.map.evader_location)
-            self.claimed_paths[agent_id] = path  # TODO: There's a bug here when agent path becomes length 1...idk why
+            path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), self.map.evader_location)
+            if agent_id == 0:
+                print(len(path))
+
+            claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, R))) for p in path])
+            self.claimed_voxels[agent_id] = claimed
             new_location = path.pop(0)
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
 
             self.updated[agent_id] = True
+            self.check_swarm_detection()
             if all(self.updated) or self.map.evader_location:
-                self.update_swarm()
+                self.update_swarm()  # NOTE: Is this if statement right? If in detection_zone, should update it NOW
                 self.updated = [False] * self.num_pursuers
             return VoxelUpdateResponse(coord_x, coord_y)
 
@@ -86,7 +92,10 @@ class Pursuit(object):
     def update_swarm(self):
         for point in self.map.swarm:
             point.move_one_step(self, self.map)
-        return
+
+    def check_swarm_detection(self):
+        for point in self.map.swarm:
+            point.check_detected(self, self.map)
 
     def distanceSum(self, p):
         eLoc = Location(p[0], p[1])

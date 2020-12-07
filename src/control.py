@@ -7,7 +7,7 @@ from geometry_msgs.msg import Vector3, Twist, TransformStamped
 from geometry_msgs.msg import Twist
 from decentralized_search.srv import VoxelUpdate, GoalUpdate
 
-tol = 0.2
+tol = 0.3
 
 class AgentNode(object):
     def __init__(self, robot_id, initial_x, initial_y):
@@ -19,7 +19,7 @@ class AgentNode(object):
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
         self.r = rospy.Rate(10)
-        self.K1 = 0.3
+        self.K1 = 0.5
         self.K2 = 1
         self.curr_target_location = None
         self.curr_x = initial_x
