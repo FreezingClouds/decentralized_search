@@ -89,10 +89,7 @@ class Map(object):
         # TODO: Plug into Raylen's vision code
         return
 
-    def get_path(self, location1, location2):
-        # NOTE: All locations in this method are tuples representing voxels for efficiency
-        assert not self.is_obstacle(location1)
-        assert not self.is_obstacle(location2)
+    def get_path_opt(self, location1, location2):
         start = (location1.x, location1.y)
         finish = (location2.x, location2.y)
 
@@ -142,6 +139,12 @@ class Map(object):
             curr_node = node_to_prev_node[curr_node]
             path.insert(0, curr_node)
         return self.tuples_to_locations(path)
+
+    def get_path(self, location1, location2):
+        # NOTE: All locations in this method are tuples representing voxels for efficiency
+        assert not self.is_obstacle(location1)
+        assert not self.is_obstacle(location2)
+        self.get_path_opt(location1, location2)
 
     def tuples_to_locations(self, list_of_tuples):
         return [Location(t[0], t[1]) for t in list_of_tuples]

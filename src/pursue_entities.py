@@ -89,9 +89,9 @@ class Agent(object):
         #dist3 = eLoc.distance(p3)
         #return dist1 + dist2 + dist3
 
-        d1 = map.get_path(eLoc, p1)
-        d2 = map.get_path(eLoc, p2)
-        d3 = map.get_path(eLoc, p3)
+        d1 = map.get_path_opt(eLoc, p1)
+        d2 = map.get_path_opt(eLoc, p2)
+        d3 = map.get_path_opt(eLoc, p3)
 
         d1 = len(d1)
         d2 = len(d2)
