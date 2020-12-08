@@ -2,6 +2,7 @@ import numpy as np
 from collections import OrderedDict
 import time
 max_intersection = .5
+from scipy.optimize import minimize
 
 class Location(object):
     def __init__(self, x, y):
@@ -56,6 +57,44 @@ class Agent(object):
             print('WARNING: Pursuer planning time exceeding 2 seconds...')
         return self.curr_path
 
+    def get_path_evader(self, map, pursuers):
+        self.counter += 1
+        if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
+            bnds = ((0, map.x_max), (0, map.y_max))
+            res = minimize(self.distanceSum, (0, 0), args = (map, pursuers), bounds = bnds)
+            xCoord = res.x[0]
+            yCoord = res.x[1]
+            point = (int(xCoord), int(yCoord))
+            destination = Location(point[0], point[1])
+            path = map.get_path(self.curr_location, destination)
+            tuple_path = map.locations_to_tuples(path)
+        return self.curr_path
+
+    def distanceSum(x, y, map, pursuers):
+        #eLoc = Location(p[0], p[1])
+        x = int(x)
+        y = int(y)
+        eLoc = Location(x, y)
+        p1 = pursuers[0].curr_location
+        p2 = pursuers[1].curr_location
+        p3 = pursuers[2].curr_location
+        #dist1 = eLoc.distance(p1)
+        #dist2 = eLoc.distance(p2)
+        #dist3 = eLoc.distance(p3)
+        #return dist1 + dist2 + dist3
+
+        d1 = map.get_path(eLoc, p1)
+        d2 = map.get_path(eLoc, p2)
+        d3 = map.get_path(eLoc, p3)
+
+        d1 = len(d1)
+        d2 = len(d2)
+        d3 = len(d3)
+        distArray = np.array([d1, d2, d3])
+        sortedArray = np.sort(distArray)
+        #print(sortedArray)
+
+        return -(0.01*sortedArray[0] + 0.1*sortedArray[1] + 10*sortedArray[2])
 
 class SwarmPoint(Agent):
     def __init__(self, x, y, alpha1, alpha2, alpha3):
