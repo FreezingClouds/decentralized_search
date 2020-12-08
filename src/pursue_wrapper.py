@@ -56,7 +56,6 @@ class Agent_Manager(object):
 
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
-
             r = self.voxel_detection_distance
             path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), self.map.evader_location, r)
             claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])

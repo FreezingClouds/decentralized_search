@@ -30,6 +30,8 @@ class Map(object):
         self.swarm = []
         self.evader_detected = False
         self.evader_location = None
+
+        self.neighbor_map = {}  # maps tuple to set of tuples that are non-obstacle neighbors (made for runtime)
         return
 
     def shrink_map(self, grid, shrinkage):
@@ -102,29 +104,32 @@ class Map(object):
         visited.add(start)
 
         while True:
-           if len(priority_queue) == 0:
-               break
-           distance_to_curr, curr_location = heapq.heappop(priority_queue)
-           visited.add(curr_location)
-           if curr_location == finish:
-               break
+            if len(priority_queue) == 0:
+                break
+            distance_to_curr, curr_location = heapq.heappop(priority_queue)
+            visited.add(curr_location)
+            if curr_location == finish:
+                break
 
-           neighbors = self.get_voxel_neighbors(Location(curr_location[0], curr_location[1]))
-           neighbors = [(n.x, n.y) for n in neighbors]
+            if curr_location in self.neighbor_map:
+                neighbors = self.neighbor_map[curr_location]
+            else:
+                neighbors = self.get_voxel_neighbors(Location(curr_location[0], curr_location[1]), 1)
+                self.neighbor_map[curr_location] = neighbors
 
-           for n in neighbors:
-               if n not in visited:  # if it hasn't been visited, there's a possibility of getting better path
-                   nodes_in_pq = (list(map(lambda x: x[1], priority_queue)))
-                   if n in nodes_in_pq:  # if it's currently in the pq, update the priority
-                       index = nodes_in_pq.index(n)
-                       curr_neighbor_dist = distance_to_curr + self.get_dist_between_tuples(curr_location, n)
-                       prev_dist = priority_queue[index][0] - self.get_dist_between_tuples(n, finish)  # Subtract out heuristic
-                       if curr_neighbor_dist < prev_dist:
-                           priority_queue[index] = (curr_neighbor_dist + self.get_dist_between_tuples(n, finish), n)  # Add heuristic
-                           node_to_prev_node[n] = curr_location
-                   else:  # otherwise add it to the pq
-                       heapq.heappush(priority_queue, (distance_to_curr + self.get_dist_between_tuples(curr_location, n) + self.get_dist_between_tuples(n, finish), n))
-                       node_to_prev_node[n] = curr_location
+            for n in neighbors:
+                if n not in visited:  # if it hasn't been visited, there's a possibility of getting better path
+                    nodes_in_pq = (list(map(lambda x: x[1], priority_queue)))
+                    if n in nodes_in_pq:  # if it's currently in the pq, update the priority
+                        index = nodes_in_pq.index(n)
+                        curr_neighbor_dist = distance_to_curr + self.get_dist_between_tuples(curr_location, n)
+                        prev_dist = priority_queue[index][0] - self.get_dist_between_tuples(n, finish)  # Subtract out heuristic
+                        if curr_neighbor_dist < prev_dist:
+                            priority_queue[index] = (curr_neighbor_dist + self.get_dist_between_tuples(n, finish), n)  # Add heuristic
+                            node_to_prev_node[n] = curr_location
+                    else:  # otherwise add it to the pq
+                        heapq.heappush(priority_queue, (distance_to_curr + self.get_dist_between_tuples(curr_location, n) + self.get_dist_between_tuples(n, finish), n))
+                        node_to_prev_node[n] = curr_location
 
         # Getting the path:
         if finish not in node_to_prev_node.keys():
@@ -133,8 +138,8 @@ class Map(object):
         curr_node = finish
         path = [finish]
         while curr_node != start:
-           curr_node = node_to_prev_node[curr_node]
-           path.insert(0, curr_node)
+            curr_node = node_to_prev_node[curr_node]
+            path.insert(0, curr_node)
         return self.tuples_to_locations(path)
 
     def tuples_to_locations(self, list_of_tuples):
