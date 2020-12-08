@@ -16,18 +16,20 @@ class Location(object):
 
 class Agent(object):
     detection_radius = 1  # defined in meters
+    update_every = 5  # defined in meters
 
-    def __init__(self, id, x, y, update_every_k_steps=10):
+    def __init__(self, id, x, y, meters_per_cell=1):
         self.id = id
         self.curr_location = Location(x, y)
         self.curr_path = []
-        self.update_every_k_steps = update_every_k_steps
+        self.update_every_k_steps = Agent.update_every / meters_per_cell
         self.counter = 0
         return
 
     def get_path(self, map, claimed_voxels, evader_location=None, max_intersection=.5, r=1):
         self.counter += 1
         map.detected_evader(evader_location)
+        start = time.time()
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
             self.counter, valid_path = 0, False
             locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
@@ -50,12 +52,14 @@ class Agent(object):
                 if not too_similar_to_prev_path:
                     valid_path = True
                     self.curr_path = path
+        if start - time.time() > 2:
+            print('WARNING: Pursuer planning time exceeding 2 seconds...')
         return self.curr_path
 
 
 class SwarmPoint(Agent):
     def __init__(self, x, y, alpha1, alpha2, alpha3):
-        super(SwarmPoint, self).__init__(-1, x, y, update_every_k_steps=1)
+        super(SwarmPoint, self).__init__(-1, x, y, meters_per_cell=1)
         self.alphas = (alpha1, alpha2, alpha3)
         return
 
@@ -67,7 +71,7 @@ class SwarmPoint(Agent):
             neighbors = map.get_voxel_neighbors(self.curr_location)
             neighbors.append(self.curr_location)
             neighbor_values = [self.compute_weighted_sum(neighbor_location, wrapper) for neighbor_location in neighbors]
-            best_neighbor = np.argmin(neighbor_values)
+            best_neighbor = np.argmax(neighbor_values)
             choice = neighbors[best_neighbor]
             self.curr_location = choice
 

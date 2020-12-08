@@ -4,6 +4,7 @@ import numpy as np
 import heapq
 from pursue_entities import Location, SwarmPoint
 import rospy
+import matplotlib.pyplot as plt
 from skimage.measure import block_reduce
 
 class Map(object):
@@ -13,10 +14,14 @@ class Map(object):
             return
         if width % shrinkage != 0 or height % shrinkage != 0:
             rospy.signal_shutdown('Shrinkage not divisible by width or height you donut')
-
         self.occupancy = self.shrink_map(grid, shrinkage)
+        # plt.imshow(self.occupancy, cmap='hot', origin='lower')
+        # plt.show()
+        self.occupancy = np.swapaxes(self.occupancy, 0, 1)  # need to swap
+
         self.x_max = self.occupancy.shape[0]
         self.y_max = self.occupancy.shape[1]
+
         self.meters_per_cell = resolution * shrinkage
         self.pose_origin = origin
         self.num_swarm_points = np.zeros((self.x_max, self.y_max))

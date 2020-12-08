@@ -9,7 +9,7 @@ from nav_msgs.msg import OccupancyGrid
 from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
 from decentralized_search.msg import EvaderLocation
 
-shrinkage = 25  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+shrinkage = 10  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 class Agent_Manager(object):
     def __init__(self, swarm_size=100):
@@ -26,16 +26,13 @@ class Agent_Manager(object):
         self.map.initialize_swarm(swarm_size)
         self.voxel_detection_distance = int(Agent.detection_radius / float(self.map.meters_per_cell))
 
-        # voxel_update: service to give pursuers new global map location (not a voxel) to travel to
-        # evader_location: subscribe to message that publishes location of evader if available
-        rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)
-        rospy.Subscriber('/evader_location', EvaderLocation, self.receive_evader_location, queue_size=1)
-        self.claimed_voxels = {i: set() for i in range(self.num_pursuers)}
+        rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)  # give new global voxel to travel to
+        rospy.Subscriber('/evader_location', EvaderLocation, self.receive_evader_location, queue_size=1)  # if available, get location of evader
+        self.claimed_voxels = {i: set() for i in range(self.num_pursuers)}  # for pursuer planning
 
-        # Note: we are able to set random location because this gets overwritten anyway
-        for i in range(self.num_pursuers):
+        for i in range(self.num_pursuers):  # Note: random b/c gets overwritten in 1st call to receive_voxel_update
             x, y = self.map.get_random_voxel_without_obstacle()
-            self.pursuers = [Agent(i, x, y) for i in range(self.num_pursuers)]
+            self.pursuers = [Agent(i, x, y, self.map.meters_per_cell) for i in range(self.num_pursuers)]
 
         x_evader, y_evader = self.map.get_random_voxel_without_obstacle()
         self.evader = Agent(3, x_evader, y_evader)
@@ -59,9 +56,9 @@ class Agent_Manager(object):
 
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
+
             r = self.voxel_detection_distance
             path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), self.map.evader_location, r)
-
             claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])
             self.claimed_voxels[agent_id] = claimed
             new_location = path.pop(0)
