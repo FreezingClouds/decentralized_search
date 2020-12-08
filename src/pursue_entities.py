@@ -60,14 +60,14 @@ class Agent(object):
     def get_path_evader(self, map, pursuers):
         self.counter += 1
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
-            bnds = [(1, map.x_max-1), (1, map.y_max-1)]
+            bnds = [(1, map.x_max-2), (1, map.y_max-2)]
+            print(map.x_max, map.y_max)
             x0 = (1, 1)
             res = differential_evolution(self.distanceSum, bnds, args = (map, pursuers), maxiter=1000)
 
             xCoord = res.x[0]
             yCoord = res.x[1]
-            print(res.nit)
-            print(xCoord, yCoord)
+ 
             point = (int(np.round(xCoord)), int(np.round(yCoord)))
             destination = Location(point[0], point[1])
             path = map.get_path(self.curr_location, destination)

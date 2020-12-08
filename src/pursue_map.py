@@ -10,6 +10,7 @@ from skimage.measure import block_reduce
 
 class Map(object):
     def __init__(self, width, height, grid, resolution, origin, shrinkage=1):
+
         if shrinkage < 1:
             rospy.signal_shutdown('Shrinkage should not be <1. The map is dense enough already you donut.')
             return
@@ -22,6 +23,7 @@ class Map(object):
 
         self.x_max = self.occupancy.shape[0]
         self.y_max = self.occupancy.shape[1]
+        print(self.occupancy)
 
         self.meters_per_cell = resolution * shrinkage
         self.pose_origin = origin
@@ -142,9 +144,12 @@ class Map(object):
 
     def get_path(self, location1, location2):
         # NOTE: All locations in this method are tuples representing voxels for efficiency
+        if self.is_obstacle(location2):
+          print(location2.x, location2.y)
+          print(self.is_obstacle(location2))
         assert not self.is_obstacle(location1)
         assert not self.is_obstacle(location2)
-        self.get_path_opt(location1, location2)
+        return self.get_path_opt(location1, location2)
 
     def tuples_to_locations(self, list_of_tuples):
         return [Location(t[0], t[1]) for t in list_of_tuples]
