@@ -2,7 +2,7 @@ import numpy as np
 from collections import OrderedDict
 import time
 max_intersection = .5
-from scipy.optimize import minimize
+from scipy.optimize import differential_evolution
 
 class Location(object):
     def __init__(self, x, y):
@@ -60,12 +60,15 @@ class Agent(object):
     def get_path_evader(self, map, pursuers):
         self.counter += 1
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
-            bnds = ((1, map.x_max-1), (1, map.y_max-1))
-            x0 = (1,1)
-            res = minimize(self.distanceSum, x0, args = (map, pursuers), bounds = bnds, method = 'TNC')
+            bnds = [(1, map.x_max-1), (1, map.y_max-1)]
+            x0 = (1, 1)
+            res = differential_evolution(self.distanceSum, bnds, args = (map, pursuers), maxiter=1000)
+
             xCoord = res.x[0]
             yCoord = res.x[1]
-            point = (int(xCoord), int(yCoord))
+            print(res.nit)
+            print(xCoord, yCoord)
+            point = (int(np.round(xCoord)), int(np.round(yCoord)))
             destination = Location(point[0], point[1])
             path = map.get_path(self.curr_location, destination)
             if len(path) == 0:
@@ -97,7 +100,7 @@ class Agent(object):
         sortedArray = np.sort(distArray)
         #print(sortedArray)
 
-        return -(0.01*sortedArray[0] + 0.1*sortedArray[1] + 10*sortedArray[2])
+        return np.exp(-sortedArray[0]) + np.exp(-sortedArray[1]) + np.exp(-sortedArray[2])
 
 class SwarmPoint(Agent):
     def __init__(self, x, y, alpha1, alpha2, alpha3):
