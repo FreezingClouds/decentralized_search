@@ -7,7 +7,7 @@ from geometry_msgs.msg import Vector3, Twist, TransformStamped
 from geometry_msgs.msg import Twist
 from decentralized_search.srv import VoxelUpdate, GoalUpdate
 
-tol = 0.15  # Should be less than the radius
+tol = 0.09  # Should be greater than the robot physical radius AND less than (meters_per_cell / 2)
 
 class AgentNode(object):
     def __init__(self, robot_id, initial_x, initial_y):

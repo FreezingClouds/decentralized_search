@@ -7,6 +7,7 @@ import rospy
 import matplotlib.pyplot as plt
 from skimage.measure import block_reduce
 
+
 class Map(object):
     def __init__(self, width, height, grid, resolution, origin, shrinkage=1):
         if shrinkage < 1:
@@ -32,7 +33,7 @@ class Map(object):
         return
 
     def shrink_map(self, grid, shrinkage):
-        # Convolve with specific square kernel of all ones
+        # TODO: Consider adding buffer to the walls because the walls are stick stick sticky
         size = (shrinkage, shrinkage)
         return block_reduce(grid, block_size=size, func=np.any)
 
@@ -75,9 +76,9 @@ class Map(object):
         return location_x, location_y
 
     def location_to_voxel(self, x, y):
-        voxel_x = int((x - self.pose_origin.position.x) / self.meters_per_cell)
-        voxel_y = int((y - self.pose_origin.position.y) / self.meters_per_cell)
-        return voxel_x, voxel_y
+        voxel_x = np.rint((x - self.pose_origin.position.x) / self.meters_per_cell)
+        voxel_y = np.rint((y - self.pose_origin.position.y) / self.meters_per_cell)
+        return int(voxel_x), int(voxel_y)
 
     def is_obstacle(self, location):
         return self.occupancy[location.x, location.y] > .8
@@ -88,7 +89,8 @@ class Map(object):
 
     def get_path(self, location1, location2):
         # NOTE: All locations in this method are tuples representing voxels for efficiency
-        assert not self.is_obstacle(location1) and not self.is_obstacle(location2)
+        assert not self.is_obstacle(location1)
+        assert not self.is_obstacle(location2)
         start = (location1.x, location1.y)
         finish = (location2.x, location2.y)
 

@@ -61,7 +61,8 @@ class Agent_Manager(object):
             path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), self.map.evader_location, r)
             claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])
             self.claimed_voxels[agent_id] = claimed
-            new_location = path.pop(0)
+            new_location = path.pop(0)  # Note: checked. The bug is not here. new_location is never an obstacle
+
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
 
             self.updated[agent_id] = True
