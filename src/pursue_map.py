@@ -115,6 +115,7 @@ class Map(object):
                 neighbors = self.neighbor_map[curr_location]
             else:
                 neighbors = self.get_voxel_neighbors(Location(curr_location[0], curr_location[1]), 1)
+                neighbors = self.locations_to_tuples(neighbors)
                 self.neighbor_map[curr_location] = neighbors
 
             for n in neighbors:
