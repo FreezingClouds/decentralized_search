@@ -9,7 +9,8 @@ from nav_msgs.msg import OccupancyGrid
 from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
 from decentralized_search.msg import EvaderLocation
 
-shrinkage = 10  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+
+shrinkage = 50  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 class Agent_Manager(object):
     def __init__(self, swarm_size=100):
@@ -50,10 +51,10 @@ class Agent_Manager(object):
     def receive_voxel_update(self, service_request):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
+        x, y = self.map.location_to_voxel(service_request.x, service_request.y)
+        
         if self.is_pursuer(service_request):
             agent_id = service_request.id
-            x, y = self.map.location_to_voxel(service_request.x, service_request.y)
-
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
             r = self.voxel_detection_distance
@@ -70,16 +71,12 @@ class Agent_Manager(object):
                 self.update_swarm()
                 self.updated = [False] * self.num_pursuers
             return VoxelUpdateResponse(coord_x, coord_y)
-
-        x_evader, y_evader = self.map.location_to_voxel(service_request.x, service_request.y)
-        targetPoint = np.array([x_evader, y_evader])
-        for i in range(-1, 2):
-            for k in range(-1, 2):
-                currPoint = np.array([x_evader + i, y_evader + k])
-                if not self.occupied(currPoint):
-                    if self.distanceSum(currPoint) > self.distanceSum(targetPoint):
-                        targetPoint = currPoint
-        return VoxelUpdateResponse(targetPoint[0], targetPoint[1])
+        agent = self.evader
+        agent.curr_location = Location(x, y)
+        path = agent.get_path_evader(self.map, self.pursuers)
+        new_location = path.pop(0)
+        coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
+        return VoxelUpdateResponse(coord_x, coord_y)
 
     def is_pursuer(self, service_request):
         return service_request.id < 3
@@ -91,16 +88,6 @@ class Agent_Manager(object):
     def check_swarm_detection(self):
         for point in self.map.swarm:
             point.check_detected(self, self.map)
-
-    def distanceSum(self, p):
-        eLoc = Location(p[0], p[1])
-        p1 = self.pursuers[0].curr_location
-        p2 = self.pursuers[1].curr_location
-        p3 = self.pursuers[2].curr_location
-        dist1 = eLoc.distance(p1)
-        dist2 = eLoc.distance(p2)
-        dist3 = eLoc.distance(p3)
-        return dist1 + dist2 + dist3
 
     def occupied(self, p):
         if p[0] > self.map.x_max or p[0] < 0 or p[1] > self.map.y_max or p[1] < 0:
