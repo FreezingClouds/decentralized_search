@@ -51,7 +51,6 @@ class Agent_Manager(object):
     def receive_voxel_update(self, service_request):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
-
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
         
         if self.is_pursuer(service_request):

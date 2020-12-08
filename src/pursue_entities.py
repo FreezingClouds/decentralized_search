@@ -60,20 +60,23 @@ class Agent(object):
     def get_path_evader(self, map, pursuers):
         self.counter += 1
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
-            bnds = ((0, map.x_max), (0, map.y_max))
-            res = minimize(self.distanceSum, (0, 0), args = (map, pursuers), bounds = bnds)
+            bnds = ((1, map.x_max-1), (1, map.y_max-1))
+            x0 = (1,1)
+            res = minimize(self.distanceSum, x0, args = (map, pursuers), bounds = bnds, method = 'TNC')
             xCoord = res.x[0]
             yCoord = res.x[1]
             point = (int(xCoord), int(yCoord))
             destination = Location(point[0], point[1])
             path = map.get_path(self.curr_location, destination)
-            tuple_path = map.locations_to_tuples(path)
+            if len(path) == 0:
+                path = [self.curr_location]
+            self.curr_path = path
         return self.curr_path
 
-    def distanceSum(x, y, map, pursuers):
+    def distanceSum(self, coords, map, pursuers):
         #eLoc = Location(p[0], p[1])
-        x = int(x)
-        y = int(y)
+        x = int(coords[0])
+        y = int(coords[1])
         eLoc = Location(x, y)
         p1 = pursuers[0].curr_location
         p2 = pursuers[1].curr_location
