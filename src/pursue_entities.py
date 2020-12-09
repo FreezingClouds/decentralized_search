@@ -2,7 +2,7 @@ import numpy as np
 from collections import OrderedDict
 import time
 max_intersection = .3
-from scipy.optimize import minimize
+from scipy.optimize import differential_evolution
 
 class Location(object):
     def __init__(self, x, y):
@@ -77,17 +77,18 @@ class Agent(object):
     def get_path_evader(self, map, pursuers):
         self.counter += 1
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
-            bnds = [(1, map.x_max-1), (1, map.y_max-1)]
+            bnds = [(1, map.x_max - 2), (1, map.y_max - 2)]
+            # print(map.x_max, map.y_max)
             x0 = (1, 1)
-            # res = differential_evolution(self.distanceSum, bnds, args = (map, pursuers), maxiter=1000)
+            res = differential_evolution(self.distanceSum, bnds, args=(map, pursuers), maxiter=1000)
 
-            # xCoord = res.x[0]
-            # yCoord = res.x[1]
-            # print(res.nit)
-            # print(xCoord, yCoord)
-            # point = (int(np.round(xCoord)), int(np.round(yCoord)))
-            point = (self.curr_location.x, self.curr_location.y)
+            xCoord = res.x[0]
+            yCoord = res.x[1]
+
+            point = (int(np.round(xCoord)), int(np.round(yCoord)))
             destination = Location(point[0], point[1])
+            if map.is_obstacle(destination):
+                destination = map.nearest_non_obstacle(destination)
             path = map.get_path(self.curr_location, destination)
             if len(path) == 0:
                 path = [self.curr_location]
@@ -107,9 +108,9 @@ class Agent(object):
         #dist3 = eLoc.distance(p3)
         #return dist1 + dist2 + dist3
 
-        d1 = map.get_path(eLoc, p1)
-        d2 = map.get_path(eLoc, p2)
-        d3 = map.get_path(eLoc, p3)
+        d1 = map.get_path_opt(eLoc, p1)
+        d2 = map.get_path_opt(eLoc, p2)
+        d3 = map.get_path_opt(eLoc, p3)
 
         d1 = len(d1)
         d2 = len(d2)
