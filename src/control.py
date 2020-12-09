@@ -68,7 +68,7 @@ class AgentNode(object):
                 control_command.angular.z = self.K2 * dy
 
                 self.pub.publish(control_command)
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 pass
             self.r.sleep()
 

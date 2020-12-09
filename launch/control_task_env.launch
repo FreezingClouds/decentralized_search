@@ -14,11 +14,6 @@
               type="static_transform_publisher" 
               name="world2map" 
               args="0 0 0 0 0 0  world map 100" />
-	
-	<node pkg="tf" 
-              type="static_transform_publisher" 
-              name="world2target" 
-              args="5 5 0 0 0 0  world target 100" />
 
 	<include file="$(find stdr_gui)/launch/stdr_gui.launch"/>
 
