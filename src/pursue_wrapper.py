@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 """ Wrapper for multi-agent search and capture. Pseudo-code outlined below"""
 
+import numpy as np
+import time
+from math import *
+
+import rospy
+from decentralized_search.msg import EvaderLocation
+from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
+from nav_msgs.msg import OccupancyGrid
+
 from pursue_entities import Location, Agent
 from pursue_map import Map
-import rospy
-import numpy as np
-from nav_msgs.msg import OccupancyGrid
-from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
-from decentralized_search.msg import EvaderLocation
-import time
+
 
 class Agent_Manager(object):
     def __init__(self, swarm_size=1000):
@@ -37,6 +41,8 @@ class Agent_Manager(object):
 
         rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)  # give new global voxel to travel to
         rospy.Subscriber('/evader_location', EvaderLocation, self.receive_evader_location, queue_size=1)  # if available, get location of evader
+
+        # print(self.in_vision_of(Location(25, 10), Location(25, 13), 0, 1))
 
         rospy.spin()
         return
@@ -99,6 +105,16 @@ class Agent_Manager(object):
             return True
         if self.map.is_obstacle(Location(p[0], p[1])):
             return True
+        return False
+
+    def in_vision_of(self, location1, location2, pose=0, fov=6.28):
+        tol = 1
+        ray = self.map.get_vision_ray(location1, location2, 20, True)
+        if abs(pose % pi - ray[1] % pi) < fov / 2:
+            dx = float(location2.x - location1.x)
+            dy = float(location2.y - location1.y)
+            return ray[0] + tol >= sqrt(dx ** 2 + dy ** 2)
+        print("Out of FOV.")
         return False
 
 
