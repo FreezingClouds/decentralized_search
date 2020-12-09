@@ -60,6 +60,7 @@ add_service_files(
    FILES
    VoxelUpdate.srv
    GoalUpdate.srv
+   Tolerance.srv
 )
 
 ## Generate actions in the 'action' folder

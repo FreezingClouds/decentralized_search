@@ -8,18 +8,17 @@ import numpy as np
 from nav_msgs.msg import OccupancyGrid
 from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
 from decentralized_search.msg import EvaderLocation
-
-
-shrinkage = 50  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+import time
 
 class Agent_Manager(object):
-    def __init__(self, swarm_size=100):
+    def __init__(self, swarm_size=1000):
         # Map Initialization
+
         occupancy_grid = rospy.wait_for_message('/map', OccupancyGrid)
         array_of_occupancy = np.array(occupancy_grid.data)
         metadata = occupancy_grid.info
         grid = np.vstack(np.split(array_of_occupancy, metadata.height))  # split into metadata.height groups
-        self.map = Map(metadata.width, metadata.height, grid, metadata.resolution, metadata.origin, shrinkage=shrinkage)
+        self.map = Map(metadata.width, metadata.height, grid, metadata.resolution, metadata.origin)
 
         # Pursuer Initialization (random initial location...subject to change)
         self.num_pursuers = 3
@@ -27,8 +26,6 @@ class Agent_Manager(object):
         self.map.initialize_swarm(swarm_size)
         self.voxel_detection_distance = int(Agent.detection_radius / float(self.map.meters_per_cell))
 
-        rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)  # give new global voxel to travel to
-        rospy.Subscriber('/evader_location', EvaderLocation, self.receive_evader_location, queue_size=1)  # if available, get location of evader
         self.claimed_voxels = {i: set() for i in range(self.num_pursuers)}  # for pursuer planning
 
         for i in range(self.num_pursuers):  # Note: random b/c gets overwritten in 1st call to receive_voxel_update
@@ -37,6 +34,9 @@ class Agent_Manager(object):
 
         x_evader, y_evader = self.map.get_random_voxel_without_obstacle()
         self.evader = Agent(3, x_evader, y_evader)
+
+        rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)  # give new global voxel to travel to
+        rospy.Subscriber('/evader_location', EvaderLocation, self.receive_evader_location, queue_size=1)  # if available, get location of evader
 
         rospy.spin()
         return
@@ -52,13 +52,15 @@ class Agent_Manager(object):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
-        
+
         if self.is_pursuer(service_request):
             agent_id = service_request.id
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
             r = self.voxel_detection_distance
+            self.claimed_voxels[agent_id] = set()
             path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), self.map.evader_location, r)
+            print(len(path))
             claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])
             self.claimed_voxels[agent_id] = claimed
             new_location = path.pop(0)  # Note: checked. The bug is not here. new_location is never an obstacle
@@ -82,8 +84,11 @@ class Agent_Manager(object):
         return service_request.id < 3
 
     def update_swarm(self):
+        start = time.time()
         for point in self.map.swarm:
             point.move_one_step(self, self.map)
+        if time.time() - start > 2:
+            print('Warning: updating swarm took more than 2 seconds')
 
     def check_swarm_detection(self):
         for point in self.map.swarm:
