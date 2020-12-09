@@ -79,10 +79,12 @@ class Agent_Manager(object):
                 self.updated = [False] * self.num_pursuers
             return VoxelUpdateResponse(coord_x, coord_y)
         agent = self.evader
+        print('Received evader request!')
         agent.curr_location = Location(x, y)
         path = agent.get_path_evader(self.map, self.pursuers)
         new_location = path.pop(0)
         coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
+        print('Sending evader request!')
         return VoxelUpdateResponse(coord_x, coord_y)
 
     def is_pursuer(self, service_request):
