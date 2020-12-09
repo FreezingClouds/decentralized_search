@@ -15,8 +15,8 @@ from visualization_msgs.msg import Marker
 
 from pursue_entities import Location, SwarmPoint
 
-dilation = 7
-shrinkage = 10  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+dilation = 4
+shrinkage = 8  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 
 class Map(object):
@@ -51,7 +51,7 @@ class Map(object):
         return
 
     def get_tolerance(self, request):
-        return (self.meters_per_cell / 2.0) * .95
+        return self.meters_per_cell
 
     def shrink_map(self, grid, shrinkage):
         size = (shrinkage, shrinkage)
@@ -236,10 +236,11 @@ class Map(object):
         m.scale.y = self.meters_per_cell
         m.scale.z = 0.01
         for i, (x, y) in enumerate(voxels):
+            voxel_loc = Location(x, y)
             x = x * self.meters_per_cell + self.meters_per_cell / 2
             y = y * self.meters_per_cell + self.meters_per_cell / 2
             m.points.append(Point(x, y, 0))
-            if (is_ray and i == len(voxels) - 1) or self.is_obstacle(Location(x, y)):
+            if (is_ray and i == len(voxels) - 1) or self.is_obstacle(voxel_loc):
                 m.colors.append(ColorRGBA(1, 0.3, 0.2, 0.4))
             else:
                 m.colors.append(ColorRGBA(0, 0.5, 1, 0.4))

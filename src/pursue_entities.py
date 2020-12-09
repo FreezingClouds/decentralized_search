@@ -29,11 +29,8 @@ class Agent(object):
         return
 
     def get_path(self, map, claimed_voxels, r=1):
-        self.counter += 1
-        start = time.time()
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0 \
                 or (any(map.evader_detected) and not self.curr_path[-1].equal_to(map.evader_location)):
-            print('Planning...')
             if any(map.evader_detected):  # Just go to the evader if you see Raylen...but encourage different paths
                 claimed_voxels = set()
             self.counter, valid_path = 0, False
@@ -68,9 +65,9 @@ class Agent(object):
                 self.curr_path = path
                 least_resistance_path = path if resist < resistance else least_resistance_path
                 resistance = min(resist, resistance)
-        # if time.time() - start > 2:
-        print('Pursuer planning time took {}'.format(time.time() - start))
-        return self.curr_path
+        updated = self.counter == 0
+        self.counter += 1
+        return self.curr_path, updated
 
     def get_path_evader(self, map, pursuers):
         self.counter += 1
