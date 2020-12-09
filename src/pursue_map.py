@@ -185,7 +185,7 @@ class Map(object):
           for loc in neighbors:
             heapq.heappush(voxHeap, (loc.distance(location), loc))
 
-    def get_vision_ray(self, location1, location2, max_range=9999, visualize=False):
+    def get_vision_ray(self, location1, location2, max_range=200, visualize=False):
         dx = float(location2.x - location1.x)
         dy = float(location2.y - location1.y)
         theta = pi
@@ -200,14 +200,12 @@ class Map(object):
         while dist <= max_range / self.meters_per_cell:
             xMap = int(location1.x / self.meters_per_cell + cos(theta) * dist)
             yMap = int(location1.y / self.meters_per_cell + sin(theta) * dist)
-            if visualize:
-                vis.append((xMap * self.meters_per_cell, yMap * self.meters_per_cell))
+            if visualize: vis.append((xMap * self.meters_per_cell, yMap * self.meters_per_cell))
             if xMap < 0 or xMap > self.x_max or yMap < 0 or yMap > self.y_max:
-                if visualize: print("out of bounds at voxel {x}, {y}".format(x=xMap, y=yMap))
+                if visualize: print("VISION: Out of bounds at voxel {x}, {y}".format(x=xMap, y=yMap))
                 break
             if self.is_obstacle(Location(xMap, yMap)):
-                if visualize:
-                    print("hit wall at voxel {x}, {y}".format(x=xMap, y=yMap))
+                if visualize: print("VISION: Hit wall at voxel {x}, {y}".format(x=xMap, y=yMap))
                 break
             dist += 1
 
@@ -228,10 +226,12 @@ class Map(object):
         m.scale.y = self.meters_per_cell
         m.scale.z = 0.01
         for i, (x, y) in enumerate(voxels):
+            x = x * self.meters_per_cell + self.meters_per_cell / 2
+            y = y * self.meters_per_cell + self.meters_per_cell / 2
             m.points.append(Point(x, y, 0))
-            if i < len(voxels) - 1 and is_ray:
-                m.colors.append(ColorRGBA(0, 0.5, 1, 0.6))
+            if (is_ray and i == len(voxels) - 1) or self.is_obstacle(Location(x, y)):
+                m.colors.append(ColorRGBA(1, 0.3, 0.2, 0.4))
             else:
-                m.colors.append(ColorRGBA(1, 0.3, 0.2, 0.6))
+                m.colors.append(ColorRGBA(0, 0.5, 1, 0.4))
         self.vis.publish(m)
-        print("Published vision ray")
+        print("VISION: Published voxels.")

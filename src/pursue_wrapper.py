@@ -112,11 +112,11 @@ class Agent_Manager(object):
             return True
         return False
 
-    def in_vision_of(self, location1, location2, pose=0, fov=6.28):
+    def in_vision_of(self, location1, location2, view_dist=200, pose=0, fov=6.28, visualize=False):
         location1 = Location(*self.map.voxel_to_location(location1.x, location1.y))
         location2 = Location(*self.map.voxel_to_location(location2.x, location2.y))
         tol = 1
-        ray = self.map.get_vision_ray(location1, location2, 100)
+        ray = self.map.get_vision_ray(location1, location2, view_dist, visualize)
         if abs(pose % (2 * pi) - ray[1] % (2 * pi)) < fov / 2:
             dx = float(location2.x - location1.x)
             dy = float(location2.y - location1.y)
