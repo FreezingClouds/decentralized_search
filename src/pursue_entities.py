@@ -1,8 +1,9 @@
 import numpy as np
 from collections import OrderedDict
 import time
-max_intersection = .3
 from scipy.optimize import differential_evolution
+
+max_intersection = .2
 
 class Location(object):
     def __init__(self, x, y):
@@ -16,7 +17,7 @@ class Location(object):
         return location.x == self.x and location.y == self.y
 
 class Agent(object):
-    detection_radius = 5  # defined in meters
+    detection_radius = 10  # defined in meters
     update_every = 10  # defined in meters
 
     def __init__(self, id, x, y, meters_per_cell=1):
@@ -27,12 +28,14 @@ class Agent(object):
         self.counter = 0
         return
 
-    def get_path(self, map, claimed_voxels, evader_location=None, r=1):
+    def get_path(self, map, claimed_voxels, r=1):
         self.counter += 1
-        map.detected_evader(evader_location)
         start = time.time()
-        if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
-            # print('Planning...')
+        if self.counter == self.update_every_k_steps or len(self.curr_path) == 0 \
+                or (any(map.evader_detected) and not self.curr_path[-1].equal_to(map.evader_location)):
+            print('Planning...')
+            if any(map.evader_detected):  # Just go to the evader if you see Raylen...but encourage different paths
+                claimed_voxels = set()
             self.counter, valid_path = 0, False
             locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
             boundaries = [((max(loc.x - r, 0), min(loc.x + r, map.x_max)), (max(loc.y - r, 0), min(loc.y + r, map.y_max))) for loc in locations]
@@ -49,7 +52,7 @@ class Agent(object):
                     covered = covered.union(map.tuples_of_box_around_point(loc.x, loc.y, r))
 
             locations_to_densities = iter(filtered.items())
-            least_resistance_path, resistance = [], np.inf
+            least_resistance_path, resistance = [self.curr_location], np.inf
             while not valid_path:
                 try:
                     new_location, density = next(locations_to_densities)
@@ -61,17 +64,12 @@ class Agent(object):
                     continue
                 tuple_path = map.locations_to_tuples(path)
                 resist = len(set(tuple_path).intersection(claimed_voxels)) / float(len(tuple_path))
-                valid_path = not resistance <= max_intersection
-                """if valid_path:
-                    print(self.curr_location.x, self.curr_location.y, new_location.x, new_location.y)
-                    print([(l.x, l.y) for l in path])
-                    print(yes)"""
+                valid_path = resistance <= max_intersection
                 self.curr_path = path
                 least_resistance_path = path if resist < resistance else least_resistance_path
                 resistance = min(resist, resistance)
-            # print('Finished planning.')
-        if time.time() - start > 2:
-            print('WARNING: Pursuer planning time exceeding 2 seconds...')
+        # if time.time() - start > 2:
+        print('Pursuer planning time took {}'.format(time.time() - start))
         return self.curr_path
 
     def get_path_evader(self, map, pursuers):
@@ -129,23 +127,22 @@ class SwarmPoint(Agent):
 
     def move_one_step(self, wrapper, map):
         map.num_swarm_points[self.curr_location.x, self.curr_location.y] -= 1
-        if map.evader_detected:
+        if any(map.evader_detected):
             self.curr_location = map.evader_location
         else:  # evader not detected and swarmpoint not in detection zone
             neighbors = map.get_voxel_neighbors(self.curr_location)
             neighbors.append(self.curr_location)
             neighbor_values = [self.compute_weighted_sum(neighbor_location, wrapper) for neighbor_location in neighbors]
-            # best_neighbor = np.argmax(neighbor_values)
             prob = np.exp(2 * np.array(neighbor_values))
-            best_neighbor = np.random.choice(range(len(neighbor_values)), p=prob / np.sum(prob))
-            choice = neighbors[best_neighbor]
-            self.curr_location = choice
+            self.curr_location = np.random.choice(neighbors, p=prob / np.sum(prob))
 
         map.num_swarm_points[self.curr_location.x, self.curr_location.y] += 1
         return
 
     def check_detected(self, wrapper, map):
-        if map.in_detection_zone(self.curr_location):
+        if any(map.evader_detected):
+            self.curr_location = map.evader_location
+        elif wrapper.in_detection_zone(self.curr_location):
             swarm_locations = [s.curr_location for s in map.swarm]
             swarm_locations.remove(self.curr_location)
             self.curr_location = np.random.choice(swarm_locations)

@@ -1,24 +1,28 @@
 #!/usr/bin/env python
 """ Wrapper for multi-agent search and capture. Pseudo-code outlined below"""
 
+import numpy as np
+import time
+from math import *
+
+import rospy
+from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
+from nav_msgs.msg import OccupancyGrid
+from std_msgs.msg import Int8
+
 from pursue_entities import Location, Agent
 from pursue_map import Map
-import rospy
-import numpy as np
-from nav_msgs.msg import OccupancyGrid
-from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
-from decentralized_search.msg import EvaderLocation
-import time
+
 
 class Agent_Manager(object):
     def __init__(self, swarm_size=1000):
         # Map Initialization
-
         occupancy_grid = rospy.wait_for_message('/map', OccupancyGrid)
         array_of_occupancy = np.array(occupancy_grid.data)
         metadata = occupancy_grid.info
         grid = np.vstack(np.split(array_of_occupancy, metadata.height))  # split into metadata.height groups
         self.map = Map(metadata.width, metadata.height, grid, metadata.resolution, metadata.origin)
+        self.win_condition = 5  # distance in meters to considered captured
 
         # Pursuer Initialization (random initial location...subject to change)
         self.num_pursuers = 3
@@ -36,37 +40,38 @@ class Agent_Manager(object):
         self.evader = Agent(3, x_evader, y_evader)
 
         rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)  # give new global voxel to travel to
-        rospy.Subscriber('/evader_location', EvaderLocation, self.receive_evader_location, queue_size=1)  # if available, get location of evader
+        self.finished = rospy.Publisher('/finished', Int8, queue_size=1)
 
         rospy.spin()
         return
-
-    def receive_evader_location(self, msg):
-        # Callback for receiving evader location.
-        if msg.found:
-            self.map.evader_location = Location(msg.x, msg.y)
-        else:
-            self.map.evader_location = None
 
     def receive_voxel_update(self, service_request):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
+        self.map.evader_location = self.evader.curr_location
 
         if self.is_pursuer(service_request):
             agent_id = service_request.id
+            self.map.evader_detected[agent_id] = self.in_vision_of(Location(x, y), self.evader.curr_location)
+            if (self.map.evader_detected[agent_id]):
+                print('Robot number {} has detected Raylen'.format(agent_id))
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
+
+            if agent.curr_location.distance(self.evader.curr_location) and self.map.evader_detected[agent_id]:
+                print(' Target CAPTURED! ')
+                rospy.signal_shutdown(' Target has been captured')
+                self.finished.publish(Int8(1))
+
             r = self.voxel_detection_distance
             self.claimed_voxels[agent_id] = set()
-            path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), self.map.evader_location, r)
-            print(len(path))
+            path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), r)
             claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])
             self.claimed_voxels[agent_id] = claimed
             new_location = path.pop(0)  # Note: checked. The bug is not here. new_location is never an obstacle
 
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
-
             self.updated[agent_id] = True
             self.check_swarm_detection()
             if all(self.updated) or self.map.evader_location:
@@ -88,17 +93,34 @@ class Agent_Manager(object):
         for point in self.map.swarm:
             point.move_one_step(self, self.map)
         if time.time() - start > 2:
-            print('Warning: updating swarm took more than 2 seconds')
+            print('Warning: updating swarm took {} seconds'.format(time.time() - start))
 
     def check_swarm_detection(self):
+        start = time.time()
         for point in self.map.swarm:
             point.check_detected(self, self.map)
+        if time.time() - start > 2:
+            print('Warning: checking swarm detection took more than 2 seconds')
+
+    def in_detection_zone(self, location):
+        return any([self.in_vision_of(location, agent.curr_location) for agent in self.pursuers])
 
     def occupied(self, p):
         if p[0] > self.map.x_max or p[0] < 0 or p[1] > self.map.y_max or p[1] < 0:
             return True
         if self.map.is_obstacle(Location(p[0], p[1])):
             return True
+        return False
+
+    def in_vision_of(self, location1, location2, view_dist=200, pose=0, fov=6.28, visualize=False):
+        location1 = Location(*self.map.voxel_to_location(location1.x, location1.y))
+        location2 = Location(*self.map.voxel_to_location(location2.x, location2.y))
+        tol = 1
+        ray = self.map.get_vision_ray(location1, location2, view_dist, visualize)
+        if abs(pose % (2 * pi) - ray[1] % (2 * pi)) < fov / 2:
+            dx = float(location2.x - location1.x)
+            dy = float(location2.y - location1.y)
+            return ray[0] + tol / 2 >= sqrt(dx ** 2 + dy ** 2)
         return False
 
 

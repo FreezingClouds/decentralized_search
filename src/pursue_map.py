@@ -1,15 +1,23 @@
 """ Class definitions for pursue wrapper """
 
-import numpy as np
 import heapq
-from pursue_entities import Location, SwarmPoint
-import rospy
-import matplotlib.pyplot as plt
-from skimage.measure import block_reduce
-import cv2
-from decentralized_search.srv import Tolerance
+import numpy as np
+from math import *
 
-shrinkage = 5  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+import cv2
+import matplotlib.pyplot as plt
+import rospy
+from decentralized_search.srv import Tolerance
+from geometry_msgs.msg import Point
+from skimage.measure import block_reduce
+from std_msgs.msg import ColorRGBA
+from visualization_msgs.msg import Marker
+
+from pursue_entities import Location, SwarmPoint
+
+dilation = 7
+shrinkage = 10  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+
 
 class Map(object):
     def __init__(self, width, height, grid, resolution, origin):
@@ -23,19 +31,23 @@ class Map(object):
 
         self.x_max = self.occupancy.shape[0]
         self.y_max = self.occupancy.shape[1]
-        # print(self.occupancy)
 
         self.meters_per_cell = resolution * shrinkage
         self.pose_origin = origin
         self.num_swarm_points = np.zeros((self.x_max, self.y_max))
 
         self.swarm = []
-        self.evader_detected = False
+        self.evader_detected = [False] * 3
+
         self.evader_location = None
 
         rospy.Service("/tolerance", Tolerance, self.get_tolerance)
 
         self.neighbor_map = {}  # maps tuple to set of tuples that are non-obstacle neighbors (made for runtime)
+
+        # Used for visualizing vision rays
+        self.vis = rospy.Publisher("/vision_rays", Marker, queue_size=10, latch=True)
+
         return
 
     def get_tolerance(self, request):
@@ -43,8 +55,9 @@ class Map(object):
 
     def shrink_map(self, grid, shrinkage):
         size = (shrinkage, shrinkage)
+        kernel = np.ones((3, 3), np.uint8)
+        grid = cv2.dilate(grid.astype(np.uint8), kernel, iterations=dilation)  # Add buffers to walls
         grid = block_reduce(grid, block_size=size, func=np.any)  # Reduce resolution
-        grid = cv2.dilate(grid.astype(np.uint8), (3, 3), iterations=2)  # Add buffers to walls
         return np.ceil(grid).astype(np.float)
 
     def get_voxel_neighbors(self, location, distance=1):
@@ -80,10 +93,6 @@ class Map(object):
     def distance(self, agent1, agent2):
         return agent1.distance(agent2.curr_location)
 
-    def detected_evader(self, location):
-        self.evader_detected = False if not location else True
-        self.evader_location = location
-
     def voxel_to_location(self, x, y):
         location_x = self.pose_origin.position.x + self.meters_per_cell * x
         location_y = self.pose_origin.position.y + self.meters_per_cell * y
@@ -96,10 +105,6 @@ class Map(object):
 
     def is_obstacle(self, location):
         return self.occupancy[location.x, location.y] > .8
-
-    def in_detection_zone(self, location):
-        # TODO: Plug into Raylen's vision code
-        return
 
     def get_path_opt(self, location1, location2):
         start = (location1.x, location1.y)
@@ -154,9 +159,6 @@ class Map(object):
 
     def get_path(self, location1, location2):
         # NOTE: All locations in this method are tuples representing voxels for efficiency
-        if self.is_obstacle(location2):
-          print(location2.x, location2.y)
-          print(self.is_obstacle(location2))
         assert not self.is_obstacle(location1)
         assert not self.is_obstacle(location2)
         return self.get_path_opt(location1, location2)
@@ -183,3 +185,53 @@ class Map(object):
           for loc in neighbors:
             heapq.heappush(voxHeap, (loc.distance(location), loc))
 
+    def get_vision_ray(self, location1, location2, max_range=200, visualize=False):
+        dx = float(location2.x - location1.x)
+        dy = float(location2.y - location1.y)
+        theta = pi
+        if dx == 0:
+            theta = pi / 2 if dy > 0 else -pi / 2
+        elif dx > 0:
+            theta = atan(dy / dx)
+        else:
+            theta += atan(dy / dx)
+        dist = 1
+        vis = list()
+        while dist <= max_range / self.meters_per_cell:
+            xMap = int(location1.x / self.meters_per_cell + cos(theta) * dist)
+            yMap = int(location1.y / self.meters_per_cell + sin(theta) * dist)
+            if visualize: vis.append((xMap * self.meters_per_cell, yMap * self.meters_per_cell))
+            if xMap < 0 or xMap > self.x_max or yMap < 0 or yMap > self.y_max:
+                if visualize: print("VISION: Out of bounds at voxel {x}, {y}".format(x=xMap, y=yMap))
+                break
+            if self.is_obstacle(Location(xMap, yMap)):
+                if visualize: print("VISION: Hit wall at voxel {x}, {y}".format(x=xMap, y=yMap))
+                break
+            dist += 1
+
+        if visualize: self.visualize_voxels(vis, True)
+        # vip variable
+        rayLen = min(dist * self.meters_per_cell, max_range)
+        return rayLen, theta
+
+    def visualize_voxels(self, voxels, is_ray=False):
+        m = Marker()
+        m.header.stamp = rospy.Time.now()
+        m.header.frame_id = "map_static"
+        m.ns = "vision"
+        m.id = 0
+        m.type = Marker.POINTS
+        m.action = Marker.ADD
+        m.scale.x = self.meters_per_cell
+        m.scale.y = self.meters_per_cell
+        m.scale.z = 0.01
+        for i, (x, y) in enumerate(voxels):
+            x = x * self.meters_per_cell + self.meters_per_cell / 2
+            y = y * self.meters_per_cell + self.meters_per_cell / 2
+            m.points.append(Point(x, y, 0))
+            if (is_ray and i == len(voxels) - 1) or self.is_obstacle(Location(x, y)):
+                m.colors.append(ColorRGBA(1, 0.3, 0.2, 0.4))
+            else:
+                m.colors.append(ColorRGBA(0, 0.5, 1, 0.4))
+        self.vis.publish(m)
+        print("VISION: Published voxels.")

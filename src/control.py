@@ -7,6 +7,7 @@ import tf2_msgs.msg
 from geometry_msgs.msg import Vector3, Twist, TransformStamped
 from geometry_msgs.msg import Twist
 from decentralized_search.srv import VoxelUpdate, GoalUpdate, Tolerance
+from std_msgs.msg import Int8
 
 
 class AgentNode(object):
@@ -22,7 +23,7 @@ class AgentNode(object):
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
         self.r = rospy.Rate(10)
         self.K1 = 0.2
-        self.K2 = .5
+        self.K2 = 1
         self.curr_target_location = None
         self.curr_x = initial_x
         self.curr_y = initial_y
@@ -30,11 +31,15 @@ class AgentNode(object):
         tol_service = rospy.ServiceProxy("/tolerance", Tolerance)
         rospy.wait_for_service("/tolerance")
         AgentNode.tol = tol_service().tolerance
+        rospy.Subscriber("/finished", Int8, self.shutdown)
 
-        wait = {0: 0, 1: 1, 2: 3, 3: 0}
+        wait = {0: 0, 1: 1, 2: 6, 3: 0}
         rospy.wait_for_service("/voxel_update")
         rospy.sleep(wait[self.id])
         self.run_control_loop()
+
+    def shutdown(self):
+        rospy.signal_shutdown()
 
     def run_control_loop(self):
         while not rospy.is_shutdown():
