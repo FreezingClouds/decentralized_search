@@ -12,6 +12,7 @@ from std_msgs.msg import Int8
 
 from pursue_entities import Location, Agent
 from pursue_map import Map
+import sys
 
 
 class Agent_Manager(object):
@@ -22,7 +23,7 @@ class Agent_Manager(object):
         metadata = occupancy_grid.info
         grid = np.vstack(np.split(array_of_occupancy, metadata.height))  # split into metadata.height groups
         self.map = Map(metadata.width, metadata.height, grid, metadata.resolution, metadata.origin)
-        self.win_condition = 5  # distance in meters to considered captured
+        self.win_condition = 1.0 / self.map.meters_per_cell  # distance in meters to considered captured
 
         # Pursuer Initialization (random initial location...subject to change)
         self.num_pursuers = 3
@@ -37,10 +38,27 @@ class Agent_Manager(object):
             self.pursuers = [Agent(i, x, y, self.map.meters_per_cell) for i in range(self.num_pursuers)]
 
         x_evader, y_evader = self.map.get_random_voxel_without_obstacle()
+        x_evader, y_evader = 1000, 1000
         self.evader = Agent(3, x_evader, y_evader)
 
         rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)  # give new global voxel to travel to
+
+        # For speed up purposes
+        self.cue_swarm_update = rospy.Publisher('/update_swarm', Int8, queue_size=10)
+        rospy.Subscriber('/update_swarm', Int8, self.receive_cue_to_update_swarm)
+
+        # For speed up purposes
+        self.cue_swarm_check = rospy.Publisher('/check_swarm', Int8, queue_size=10)
+        rospy.Subscriber('/check_swarm', Int8, self.receive_cue_to_check_swarm)
+
+        # For finish/win indicator to shutdown
         self.finished = rospy.Publisher('/finished', Int8, queue_size=1)
+
+        """tmp = []
+        for x in range(self.map.x_max):
+            for y in range(self.map.y_max):
+                tmp.append((x, y))
+        self.map.visualize_voxels(tmp)"""
 
         rospy.spin()
         return
@@ -59,34 +77,42 @@ class Agent_Manager(object):
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
 
-            if agent.curr_location.distance(self.evader.curr_location) and self.map.evader_detected[agent_id]:
+            if agent.curr_location.distance(self.evader.curr_location) < self.win_condition and self.map.evader_detected[agent_id]:
                 print(' Target CAPTURED! ')
-                rospy.signal_shutdown(' Target has been captured')
                 self.finished.publish(Int8(1))
+                rospy.sleep(1)
+                rospy.signal_shutdown('done')
 
             r = self.voxel_detection_distance
-            self.claimed_voxels[agent_id] = set()
-            path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), r)
-            claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])
-            self.claimed_voxels[agent_id] = claimed
-            new_location = path.pop(0)  # Note: checked. The bug is not here. new_location is never an obstacle
-
+            path, updated = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), r)
+            if updated:
+                claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])
+                self.claimed_voxels[agent_id] = claimed
+            new_location = path.pop(0)  # mutates in place
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
             self.updated[agent_id] = True
-            self.check_swarm_detection()
+            self.cue_swarm_check.publish(Int8(1))
             if all(self.updated) or self.map.evader_location:
-                self.update_swarm()
-                self.updated = [False] * self.num_pursuers
+                self.cue_swarm_update.publish(Int8(1))
             return VoxelUpdateResponse(coord_x, coord_y)
         agent = self.evader
+        print('Received evader request!')
         agent.curr_location = Location(x, y)
         path = agent.get_path_evader(self.map, self.pursuers)
         new_location = path.pop(0)
         coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
+        print('Sending evader request!')
         return VoxelUpdateResponse(coord_x, coord_y)
 
     def is_pursuer(self, service_request):
         return service_request.id < 3
+
+    def receive_cue_to_update_swarm(self, msg):
+        self.update_swarm()
+        self.updated = [False] * self.num_pursuers
+
+    def receive_cue_to_check_swarm(self, msg):
+        self.check_swarm_detection()
 
     def update_swarm(self):
         start = time.time()

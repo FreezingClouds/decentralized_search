@@ -29,11 +29,8 @@ class Agent(object):
         return
 
     def get_path(self, map, claimed_voxels, r=1):
-        self.counter += 1
-        start = time.time()
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0 \
                 or (any(map.evader_detected) and not self.curr_path[-1].equal_to(map.evader_location)):
-            print('Planning...')
             if any(map.evader_detected):  # Just go to the evader if you see Raylen...but encourage different paths
                 claimed_voxels = set()
             self.counter, valid_path = 0, False
@@ -68,25 +65,26 @@ class Agent(object):
                 self.curr_path = path
                 least_resistance_path = path if resist < resistance else least_resistance_path
                 resistance = min(resist, resistance)
-        # if time.time() - start > 2:
-        print('Pursuer planning time took {}'.format(time.time() - start))
-        return self.curr_path
+        updated = self.counter == 0
+        self.counter += 1
+        return self.curr_path, updated
 
     def get_path_evader(self, map, pursuers):
         self.counter += 1
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
             bnds = [(1, map.x_max - 2), (1, map.y_max - 2)]
             # print(map.x_max, map.y_max)
-            x0 = (1, 1)
+            print('Boutta Res!')
             res = differential_evolution(self.distanceSum, bnds, args=(map, pursuers), maxiter=1000)
-
+            print('Got res!')
             xCoord = res.x[0]
             yCoord = res.x[1]
 
             point = (int(np.round(xCoord)), int(np.round(yCoord)))
             destination = Location(point[0], point[1])
+            print(destination.x, destination.y)
             if map.is_obstacle(destination):
-                destination = map.nearest_non_obstacle(destination)
+                destination = map.nearest_non_obstacles(destination)
             path = map.get_path(self.curr_location, destination)
             if len(path) == 0:
                 path = [self.curr_location]
@@ -105,14 +103,16 @@ class Agent(object):
         #dist2 = eLoc.distance(p2)
         #dist3 = eLoc.distance(p3)
         #return dist1 + dist2 + dist3
+        d1 = eLoc.distance(p1)
+        d2 = eLoc.distance(p2)
+        d3 = eLoc.distance(p3)
+        # d1 = map.get_path_opt(eLoc, p1)
+        # d2 = map.get_path_opt(eLoc, p2)
+        # d3 = map.get_path_opt(eLoc, p3)
 
-        d1 = map.get_path_opt(eLoc, p1)
-        d2 = map.get_path_opt(eLoc, p2)
-        d3 = map.get_path_opt(eLoc, p3)
-
-        d1 = len(d1)
-        d2 = len(d2)
-        d3 = len(d3)
+        # d1 = len(d1)
+        # d2 = len(d2)
+        # d3 = len(d3)
         distArray = np.array([d1, d2, d3])
         sortedArray = np.sort(distArray)
         #print(sortedArray)

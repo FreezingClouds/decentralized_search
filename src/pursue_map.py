@@ -15,8 +15,8 @@ from visualization_msgs.msg import Marker
 
 from pursue_entities import Location, SwarmPoint
 
-dilation = 7
-shrinkage = 10  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+dilation = 4
+shrinkage = 8  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 
 class Map(object):
@@ -51,7 +51,7 @@ class Map(object):
         return
 
     def get_tolerance(self, request):
-        return (self.meters_per_cell / 2.0) * .95
+        return self.meters_per_cell
 
     def shrink_map(self, grid, shrinkage):
         size = (shrinkage, shrinkage)
@@ -173,18 +173,28 @@ class Map(object):
         return np.sqrt((tup1[0] - tup2[0]) ** 2 + (tup1[1] - tup2[1]) ** 2)
 
     def nearest_non_obstacles(self, location):
+        print('Starting obstacle search!')
+        if location.x < 1 or location.x >= self.x_max or location.y < 1 or location.y >= self.y_max:
+          print('Out of bounds!')
         voxHeap = []
-        heapq.heappush(voxHeap, (0, location))
-        currLocation = location
-
+        heapq.heappush(voxHeap, (0, (location.x, location.y)))
+        alreadyVisited = set()
         while True:
           currLocation = heapq.heappop(voxHeap)
-          if not self.is_obstacle(currLocation):
-            return currLocation
-          neighbors = self.get_voxel_neighbors(currLocation)
+          currLocation = currLocation[1]
+          if not self.is_obstacle(Location(currLocation[0], currLocation[1])):
+            print('Done!')
+            return Location(currLocation[0], currLocation[1])
+          neighbors = list(self.tuples_of_box_around_point(currLocation[0], currLocation[1], 1))
+          neighbors.remove(currLocation)
+          alreadyVisited.add(currLocation)
+          if (location.x, location.y) in neighbors:
+            neighbors.remove((location.x, location.y))
+          nodes_in_pq = (list(map(lambda x: x[1], voxHeap)))
+          neighbors = [Location(n[0], n[1]) for n in neighbors if (0 <= n[0] < self.x_max) and (0 <= n[1] < self.y_max) and (n not in alreadyVisited) and (n not in nodes_in_pq)]
           for loc in neighbors:
-            heapq.heappush(voxHeap, (loc.distance(location), loc))
-
+            heapq.heappush(voxHeap, (loc.distance(location), (loc.x, loc.y)))
+  
     def get_vision_ray(self, location1, location2, max_range=200, visualize=False):
         dx = float(location2.x - location1.x)
         dy = float(location2.y - location1.y)
@@ -226,10 +236,11 @@ class Map(object):
         m.scale.y = self.meters_per_cell
         m.scale.z = 0.01
         for i, (x, y) in enumerate(voxels):
+            voxel_loc = Location(x, y)
             x = x * self.meters_per_cell + self.meters_per_cell / 2
             y = y * self.meters_per_cell + self.meters_per_cell / 2
             m.points.append(Point(x, y, 0))
-            if (is_ray and i == len(voxels) - 1) or self.is_obstacle(Location(x, y)):
+            if (is_ray and i == len(voxels) - 1) or self.is_obstacle(voxel_loc):
                 m.colors.append(ColorRGBA(1, 0.3, 0.2, 0.4))
             else:
                 m.colors.append(ColorRGBA(0, 0.5, 1, 0.4))
