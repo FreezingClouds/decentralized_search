@@ -25,6 +25,8 @@ class AgentNode(object):
         self.r = rospy.Rate(10)
         self.K1 = .5
         self.K2 = 1
+        self.K1 = 2
+        self.K2 = 5
         self.curr_target_location = None
         self.curr_x = initial_x
         self.curr_y = initial_y
@@ -73,7 +75,7 @@ class AgentNode(object):
                 control_command.angular.z = self.K2 * dy
 
                 self.pub.publish(control_command)
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 pass
             self.r.sleep()
 

@@ -53,11 +53,13 @@ class Agent_Manager(object):
         # For finish/win indicator to shutdown
         self.finished = rospy.Publisher('/finished', Int8, queue_size=1)
 
-        """tmp = []
+        voxel_grid = []
         for x in range(self.map.x_max):
             for y in range(self.map.y_max):
-                tmp.append((x, y))
-        self.map.visualize_voxels(tmp)"""
+                voxel_grid.append((x, y))
+        while not rospy.is_shutdown():
+            rospy.sleep(20)
+            self.map.visualize_voxels(voxel_grid)
 
         rospy.spin()
         return
