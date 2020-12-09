@@ -12,11 +12,10 @@ from std_msgs.msg import Int8
 
 from pursue_entities import Location, Agent
 from pursue_map import Map
-import sys
 
 
 class Agent_Manager(object):
-    def __init__(self, swarm_size=1000):
+    def __init__(self, swarm_size=200):
         # Map Initialization
         occupancy_grid = rospy.wait_for_message('/map', OccupancyGrid)
         array_of_occupancy = np.array(occupancy_grid.data)
@@ -69,21 +68,27 @@ class Agent_Manager(object):
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
         self.map.evader_location = self.evader.curr_location
 
+        if any([agent.curr_location.distance(self.evader.curr_location) < self.win_condition and self.map.evader_detected[i] for i, agent in enumerate(self.pursuers)]):
+            print(' Target CAPTURED! ')
+            self.finished.publish(Int8(1))
+            rospy.sleep(1)
+            rospy.signal_shutdown('done')
+
         if self.is_pursuer(service_request):
             agent_id = service_request.id
-            self.map.evader_detected[agent_id] = self.in_vision_of(Location(x, y), self.evader.curr_location)
-            if (self.map.evader_detected[agent_id]):
+            self.map.evader_detected[agent_id] = self.in_vision_of(Location(x, y), self.evader.curr_location, 500)
+            if self.map.evader_detected[agent_id]:
                 print('Robot number {} has detected Raylen'.format(agent_id))
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
-
-            if agent.curr_location.distance(self.evader.curr_location) < self.win_condition and self.map.evader_detected[agent_id]:
-                print(' Target CAPTURED! ')
-                self.finished.publish(Int8(1))
-                rospy.sleep(1)
-                rospy.signal_shutdown('done')
-
             r = self.voxel_detection_distance
+
+            # Filter for repeats
+            num_delete = [self.map.get_dist_between_tuples(self.map.voxel_to_location(l.x, l.y), (service_request.x, service_request.y)) for l in agent.curr_path[:3]]
+            num_delete = np.where([i for i, x in enumerate(num_delete) if x > self.map.tolerance_to_set])[0]
+            agent.curr_path = agent.curr_path[int(num_delete[0]):] if len(num_delete) > 0 else agent.curr_path
+
+            # Algorithm
             path, updated = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), r)
             if updated:
                 claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])
@@ -96,12 +101,10 @@ class Agent_Manager(object):
                 self.cue_swarm_update.publish(Int8(1))
             return VoxelUpdateResponse(coord_x, coord_y)
         agent = self.evader
-        print('Received evader request!')
         agent.curr_location = Location(x, y)
         path = agent.get_path_evader(self.map, self.pursuers)
         new_location = path.pop(0)
         coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
-        print('Sending evader request!')
         return VoxelUpdateResponse(coord_x, coord_y)
 
     def is_pursuer(self, service_request):
@@ -116,8 +119,9 @@ class Agent_Manager(object):
 
     def update_swarm(self):
         start = time.time()
+        pursuer_locations = np.vstack([np.array([p.curr_location.x, p.curr_location.y]) for p in self.pursuers])
         for point in self.map.swarm:
-            point.move_one_step(self, self.map)
+            point.move_one_step(self, self.map, pursuer_locations)
         if time.time() - start > 2:
             print('Warning: updating swarm took {} seconds'.format(time.time() - start))
 

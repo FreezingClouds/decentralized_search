@@ -15,7 +15,7 @@ from visualization_msgs.msg import Marker
 
 from pursue_entities import Location, SwarmPoint
 
-dilation = 4
+dilation = 8
 shrinkage = 8  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 
@@ -41,6 +41,7 @@ class Map(object):
 
         self.evader_location = None
 
+        self.tolerance_to_set = self.meters_per_cell
         rospy.Service("/tolerance", Tolerance, self.get_tolerance)
 
         self.neighbor_map = {}  # maps tuple to set of tuples that are non-obstacle neighbors (made for runtime)
@@ -51,7 +52,7 @@ class Map(object):
         return
 
     def get_tolerance(self, request):
-        return self.meters_per_cell
+        return self.tolerance_to_set
 
     def shrink_map(self, grid, shrinkage):
         size = (shrinkage, shrinkage)
@@ -173,7 +174,6 @@ class Map(object):
         return np.sqrt((tup1[0] - tup2[0]) ** 2 + (tup1[1] - tup2[1]) ** 2)
 
     def nearest_non_obstacles(self, location):
-        print('Starting obstacle search!')
         if location.x < 1 or location.x >= self.x_max or location.y < 1 or location.y >= self.y_max:
           print('Out of bounds!')
         voxHeap = []

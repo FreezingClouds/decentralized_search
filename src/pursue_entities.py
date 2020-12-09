@@ -31,10 +31,19 @@ class Agent(object):
     def get_path(self, map, claimed_voxels, r=1):
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0 \
                 or (any(map.evader_detected) and not self.curr_path[-1].equal_to(map.evader_location)):
-            if any(map.evader_detected):  # Just go to the evader if you see Raylen...but encourage different paths
-                claimed_voxels = set()
             self.counter, valid_path = 0, False
+            # Edge case for lose sight of evader
             locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
+            if len(locations) == 0:
+                print('defaulting')
+                locations = []
+                covered = set()
+                prev = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y)]
+                for loc in prev:
+                    if (loc.x, loc.y) not in covered:
+                        locations.append(loc)
+                        covered = covered.union(map.tuples_of_box_around_point(loc.x, loc.y, r))
+
             boundaries = [((max(loc.x - r, 0), min(loc.x + r, map.x_max)), (max(loc.y - r, 0), min(loc.y + r, map.y_max))) for loc in locations]
             densities = [np.sum(map.num_swarm_points[x_bound[0]: x_bound[1] + 1, y_bound[0]: y_bound[1] + 1]) for x_bound, y_bound in boundaries]
             locations_to_densities = dict(zip(locations, densities))
@@ -122,20 +131,26 @@ class Agent(object):
 class SwarmPoint(Agent):
     def __init__(self, x, y, alpha1, alpha2, alpha3):
         super(SwarmPoint, self).__init__(-1, x, y, meters_per_cell=1)
-        self.alphas = (alpha1, alpha2, alpha3)
+        self.alphas = np.expand_dims(np.array([alpha1, alpha2, alpha3]), axis=1)
         return
 
-    def move_one_step(self, wrapper, map):
-        map.num_swarm_points[self.curr_location.x, self.curr_location.y] -= 1
+    def move_one_step(self, wrapper, map, pursuer_location_array):
+        old_loc = self.curr_location
         if any(map.evader_detected):
             self.curr_location = map.evader_location
-        else:  # evader not detected and swarmpoint not in detection zone
-            neighbors = map.get_voxel_neighbors(self.curr_location)
+        else:
+            neighbors = map.get_voxel_neighbors(self.curr_location, distance=1)
             neighbors.append(self.curr_location)
-            neighbor_values = [self.compute_weighted_sum(neighbor_location, wrapper) for neighbor_location in neighbors]
-            prob = np.exp(2 * np.array(neighbor_values))
+            num_neighbors = len(neighbors)
+            neighbor_array = np.expand_dims(np.array([[l.x, l.y] for l in neighbors]), axis=0)  # 1 x neighbors x 2
+            neighbor_array = np.repeat(neighbor_array, 3, axis=0)  # 3 x neighbors x 2
+            pursuer_location_array = np.repeat(np.expand_dims(pursuer_location_array, axis=1), num_neighbors, axis=1)  # 3 x neighbors x 2
+            square_dist = np.sqrt(np.sum(np.square(neighbor_array - pursuer_location_array), axis=2))  # 3 x neighbors
+            weighted_dist = self.alphas * square_dist # 3 x neighbors
+            prob = np.sum(weighted_dist, axis=0).flatten()
+            prob = np.exp(2 * np.array(prob))
             self.curr_location = np.random.choice(neighbors, p=prob / np.sum(prob))
-
+        map.num_swarm_points[old_loc.x, old_loc.y] -= 1
         map.num_swarm_points[self.curr_location.x, self.curr_location.y] += 1
         return
 
@@ -143,9 +158,7 @@ class SwarmPoint(Agent):
         if any(map.evader_detected):
             self.curr_location = map.evader_location
         elif wrapper.in_detection_zone(self.curr_location):
+            # TODO: Edge case: all warm points in detection zone
             swarm_locations = [s.curr_location for s in map.swarm]
             swarm_locations.remove(self.curr_location)
             self.curr_location = np.random.choice(swarm_locations)
-
-    def compute_weighted_sum(self, location, wrapper):
-        return sum([p.curr_location.distance(location) * self.alphas[i] for i, p in enumerate(wrapper.pursuers)])
