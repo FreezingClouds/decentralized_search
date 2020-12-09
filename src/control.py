@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 import rospy
+import rosservice
 import tf2_ros
 import tf2_msgs.msg
 
 from geometry_msgs.msg import Vector3, Twist, TransformStamped
 from geometry_msgs.msg import Twist
-from decentralized_search.srv import VoxelUpdate, GoalUpdate
+from decentralized_search.srv import VoxelUpdate, GoalUpdate, Tolerance
 
-tol = 0.09  # Should be greater than the robot physical radius AND less than (meters_per_cell / 2)
 
 class AgentNode(object):
+    tol = None
+
     def __init__(self, robot_id, initial_x, initial_y):
         self.id = robot_id
         self.request_new_location = rospy.ServiceProxy("/voxel_update", VoxelUpdate)
@@ -19,11 +21,19 @@ class AgentNode(object):
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
         self.r = rospy.Rate(10)
-        self.K1 = 0.5
-        self.K2 = 1
+        self.K1 = 0.2
+        self.K2 = .5
         self.curr_target_location = None
         self.curr_x = initial_x
         self.curr_y = initial_y
+
+        tol_service = rospy.ServiceProxy("/tolerance", Tolerance)
+        rospy.wait_for_service("/tolerance")
+        AgentNode.tol = tol_service().tolerance
+
+        wait = {0: 0, 1: 1, 2: 3, 3: 0}
+        rospy.wait_for_service("/voxel_update")
+        rospy.sleep(wait[self.id])
         self.run_control_loop()
 
     def run_control_loop(self):
@@ -46,7 +56,7 @@ class AgentNode(object):
                 dx = trans.transform.translation.x
                 dy = trans.transform.translation.y
                 control_command = Twist()
-                if dx ** 2 + dy ** 2 < tol ** 2:
+                if dx ** 2 + dy ** 2 < AgentNode.tol ** 2:
                     self.pub.publish(control_command)
                     return
                 control_command.linear.x = self.K1 * dx

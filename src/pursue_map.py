@@ -6,18 +6,19 @@ from pursue_entities import Location, SwarmPoint
 import rospy
 import matplotlib.pyplot as plt
 from skimage.measure import block_reduce
+import cv2
+from decentralized_search.srv import Tolerance
 
+shrinkage = 5  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 class Map(object):
-    def __init__(self, width, height, grid, resolution, origin, shrinkage=1):
+    def __init__(self, width, height, grid, resolution, origin):
         if shrinkage < 1:
             rospy.signal_shutdown('Shrinkage should not be <1. The map is dense enough already you donut.')
             return
-        if width % shrinkage != 0 or height % shrinkage != 0:
-            rospy.signal_shutdown('Shrinkage not divisible by width or height you donut')
         self.occupancy = self.shrink_map(grid, shrinkage)
-        # plt.imshow(self.occupancy, cmap='hot', origin='lower')
-        # plt.show()
+        plt.imshow(self.occupancy, cmap='hot', origin='lower')
+        plt.show()
         self.occupancy = np.swapaxes(self.occupancy, 0, 1)  # need to swap
 
         self.x_max = self.occupancy.shape[0]
@@ -31,24 +32,34 @@ class Map(object):
         self.evader_detected = False
         self.evader_location = None
 
+        rospy.Service("/tolerance", Tolerance, self.get_tolerance)
+
         self.neighbor_map = {}  # maps tuple to set of tuples that are non-obstacle neighbors (made for runtime)
         return
 
+    def get_tolerance(self, request):
+        return (self.meters_per_cell / 2.0) * .95
+
     def shrink_map(self, grid, shrinkage):
-        # TODO: Consider adding buffer to the walls because the walls are stick stick sticky
         size = (shrinkage, shrinkage)
-        return block_reduce(grid, block_size=size, func=np.any)
+        grid = block_reduce(grid, block_size=size, func=np.any)  # Reduce resolution
+        grid = cv2.dilate(grid.astype(np.uint8), (3, 3), iterations=2)  # Add buffers to walls
+        return np.ceil(grid).astype(np.float)
 
     def get_voxel_neighbors(self, location, distance=1):
-        all_x_deltas, all_y_deltas = range(-distance, distance+1), range(-distance, distance+1)
-        neighbors = []
-        for x in all_x_deltas:
-            for y in all_y_deltas:
-                neighbors.append((location.x + x, location.y + y))
+        neighbors = list(self.tuples_of_box_around_point(location.x, location.y, distance))
         neighbors.remove((location.x, location.y))
         neighbors = [Location(n[0], n[1]) for n in neighbors if 0 <= n[0] < self.x_max and 0 <= n[1] < self.y_max]
         neighbors = [n for n in neighbors if not self.is_obstacle(n)]
         return neighbors
+
+    def tuples_of_box_around_point(self, x, y, distance):
+        all_x_deltas, all_y_deltas = range(-distance, distance + 1), range(-distance, distance + 1)
+        res = set()
+        for curr_x in all_x_deltas:
+            for curr_y in all_y_deltas:
+                res.add((x + curr_x, y + curr_y))
+        return res
 
     def initialize_swarm(self, swarm_size):
         for i in range(swarm_size):
