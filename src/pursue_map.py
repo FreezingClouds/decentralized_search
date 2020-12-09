@@ -25,8 +25,8 @@ class Map(object):
             rospy.signal_shutdown('Shrinkage should not be <1. The map is dense enough already you donut.')
             return
         self.occupancy = self.shrink_map(grid, shrinkage)
-        # plt.imshow(self.occupancy, cmap='hot', origin='lower')
-        # plt.show()
+        plt.imshow(self.occupancy, cmap='hot', origin='lower')
+        plt.show()
         self.occupancy = np.swapaxes(self.occupancy, 0, 1)  # need to swap
 
         self.x_max = self.occupancy.shape[0]
@@ -37,7 +37,8 @@ class Map(object):
         self.num_swarm_points = np.zeros((self.x_max, self.y_max))
 
         self.swarm = []
-        self.evader_detected = False
+        self.evader_detected = [False] * 3
+
         self.evader_location = None
 
         rospy.Service("/tolerance", Tolerance, self.get_tolerance)
