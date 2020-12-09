@@ -147,7 +147,7 @@ class SwarmPoint(Agent):
     def check_detected(self, wrapper, map):
         if map.evader_detected:
             self.curr_location = map.evader_location
-        elif map.in_detection_zone(self.curr_location):
+        elif wrapper.in_detection_zone(self.curr_location):
             swarm_locations = [s.curr_location for s in map.swarm]
             swarm_locations.remove(self.curr_location)
             self.curr_location = np.random.choice(swarm_locations)

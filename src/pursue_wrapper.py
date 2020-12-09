@@ -15,7 +15,7 @@ from pursue_map import Map
 
 
 class Agent_Manager(object):
-    def __init__(self, swarm_size=2000):
+    def __init__(self, swarm_size=1000):
         # Map Initialization
 
         occupancy_grid = rospy.wait_for_message('/map', OccupancyGrid)
@@ -41,8 +41,6 @@ class Agent_Manager(object):
 
         rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)  # give new global voxel to travel to
 
-        # print(self.in_vision_of(Location(25, 10), Location(25, 13), 0, 1))
-
         rospy.spin()
         return
 
@@ -52,6 +50,7 @@ class Agent_Manager(object):
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
 
         if self.is_pursuer(service_request):
+            self.map.evader_detected = self.in_vision_of(Location(x, y), self.evader.curr_location)
             agent_id = service_request.id
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
@@ -88,8 +87,14 @@ class Agent_Manager(object):
             print('Warning: updating swarm took more than 2 seconds')
 
     def check_swarm_detection(self):
+        start = time.time()
         for point in self.map.swarm:
             point.check_detected(self, self.map)
+        if time.time() - start > 2:
+            print('Warning: checking swarm detection took more than 2 seconds')
+
+    def in_detection_zone(self, location):
+        return any([self.in_vision_of(location, agent.curr_location) for agent in self.pursuers])
 
     def occupied(self, p):
         if p[0] > self.map.x_max or p[0] < 0 or p[1] > self.map.y_max or p[1] < 0:
@@ -99,8 +104,10 @@ class Agent_Manager(object):
         return False
 
     def in_vision_of(self, location1, location2, pose=0, fov=6.28):
+        location1 = Location(*self.map.voxel_to_location(location1.x, location1.y))
+        location2 = Location(*self.map.voxel_to_location(location2.x, location2.y))
         tol = 1
-        ray = self.map.get_vision_ray(location1, location2, 20, True)
+        ray = self.map.get_vision_ray(location1, location2, 20)
         if abs(pose % (2 * pi) - ray[1] % (2 * pi)) < fov / 2:
             dx = float(location2.x - location1.x)
             dy = float(location2.y - location1.y)

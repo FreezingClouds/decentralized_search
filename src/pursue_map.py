@@ -105,10 +105,6 @@ class Map(object):
     def is_obstacle(self, location):
         return self.occupancy[location.x, location.y] > .8
 
-    def in_detection_zone(self, location):
-        # TODO: Plug into Raylen's vision code
-        return
-
     def get_path_opt(self, location1, location2):
         start = (location1.x, location1.y)
         finish = (location2.x, location2.y)
