@@ -13,9 +13,9 @@ robot:
         laser_specifications:
           max_angle: 3.14
           min_angle: -3.14
-          max_range: 2.0
+          max_range: 0.25
           min_range: 0.05
-          num_rays: 100
+          num_rays: 20
           frequency: 10
           frame_id: laser_0
           pose:
