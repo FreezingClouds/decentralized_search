@@ -159,3 +159,17 @@ class Map(object):
 
     def get_dist_between_tuples(self, tup1, tup2):
         return np.sqrt((tup1[0] - tup2[0]) ** 2 + (tup1[1] - tup2[1]) ** 2)
+
+    def nearest_non_obstacles(self, location):
+        voxHeap = []
+        heapq.heappush(voxHeap, (0, location))
+        currLocation = location
+
+        while True:
+          currLocation = heapq.heappop(voxHeap)
+          if not self.is_obstacle(currLocation)
+            return currLocation
+          neighbors = self.get_voxel_neighbors(currLocation)
+          for loc in neighbors:
+            heapq.heappush(voxHeap, (loc.distance(location), loc))
+
