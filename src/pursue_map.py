@@ -15,8 +15,8 @@ from visualization_msgs.msg import Marker
 
 from pursue_entities import Location, SwarmPoint
 
-dilation = 4
-shrinkage = 8  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+dilation = 5
+shrinkage = 4  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 
 class Map(object):

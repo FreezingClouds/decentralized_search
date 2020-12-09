@@ -24,7 +24,7 @@ class AgentNode(object):
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
         self.r = rospy.Rate(10)
         self.K1 = 2
-        self.K2 = 3
+        self.K2 = 5
         self.curr_target_location = None
         self.curr_x = initial_x
         self.curr_y = initial_y

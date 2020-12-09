@@ -13,7 +13,7 @@ class TargetTFBroadcaster:
         rospy.Service("/goals", GoalUpdate, self.receive_new_target)
 
         num_targets = len(self.targets)
-        r = rospy.Rate(10)
+        r = rospy.Rate(100)
         while not rospy.is_shutdown():
             for i in range(num_targets):
                 x, y = self.targets[i]
