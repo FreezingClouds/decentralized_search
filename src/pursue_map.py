@@ -173,25 +173,28 @@ class Map(object):
         return np.sqrt((tup1[0] - tup2[0]) ** 2 + (tup1[1] - tup2[1]) ** 2)
 
     def nearest_non_obstacles(self, location):
+        print('Starting obstacle search!')
         if location.x < 1 or location.x >= self.x_max or location.y < 1 or location.y >= self.y_max:
           print('Out of bounds!')
         voxHeap = []
-        heapq.heappush(voxHeap, (0, location))
+        heapq.heappush(voxHeap, (0, (location.x, location.y)))
         alreadyVisited = set()
         while True:
           currLocation = heapq.heappop(voxHeap)
           currLocation = currLocation[1]
-          if not self.is_obstacle(currLocation):
-            return currLocation
-          neighbors = list(self.tuples_of_box_around_point(currLocation.x, currLocation.y, 1))
-          neighbors.remove((currLocation.x, currLocation.y))
-          alreadyVisited.add((currLocation.x, currLocation.y))
+          if not self.is_obstacle(Location(currLocation[0], currLocation[1])):
+            print('Done!')
+            return Location(currLocation[0], currLocation[1])
+          neighbors = list(self.tuples_of_box_around_point(currLocation[0], currLocation[1], 1))
+          neighbors.remove(currLocation)
+          alreadyVisited.add(currLocation)
           if (location.x, location.y) in neighbors:
             neighbors.remove((location.x, location.y))
-          neighbors = [Location(n[0], n[1]) for n in neighbors if 0 <= n[0] < self.x_max and 0 <= n[1] < self.y_max and n not in alreadyVisited]
+          nodes_in_pq = (list(map(lambda x: x[1], voxHeap)))
+          neighbors = [Location(n[0], n[1]) for n in neighbors if (0 <= n[0] < self.x_max) and (0 <= n[1] < self.y_max) and (n not in alreadyVisited) and (n not in nodes_in_pq)]
           for loc in neighbors:
-            heapq.heappush(voxHeap, (loc.distance(location), loc))
-
+            heapq.heappush(voxHeap, (loc.distance(location), (loc.x, loc.y)))
+  
     def get_vision_ray(self, location1, location2, max_range=200, visualize=False):
         dx = float(location2.x - location1.x)
         dy = float(location2.y - location1.y)
