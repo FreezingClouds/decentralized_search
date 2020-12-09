@@ -15,7 +15,7 @@ from pursue_map import Map
 
 
 class Agent_Manager(object):
-    def __init__(self, swarm_size=1000):
+    def __init__(self, swarm_size=2000):
         # Map Initialization
 
         occupancy_grid = rospy.wait_for_message('/map', OccupancyGrid)
@@ -40,19 +40,11 @@ class Agent_Manager(object):
         self.evader = Agent(3, x_evader, y_evader)
 
         rospy.Service('/voxel_update', VoxelUpdate, self.receive_voxel_update)  # give new global voxel to travel to
-        rospy.Subscriber('/evader_location', EvaderLocation, self.receive_evader_location, queue_size=1)  # if available, get location of evader
 
         # print(self.in_vision_of(Location(25, 10), Location(25, 13), 0, 1))
 
         rospy.spin()
         return
-
-    def receive_evader_location(self, msg):
-        # Callback for receiving evader location.
-        if msg.found:
-            self.map.evader_location = Location(msg.x, msg.y)
-        else:
-            self.map.evader_location = None
 
     def receive_voxel_update(self, service_request):
         """ Given a service_request consisting of a location, and respective agent ID,
@@ -65,8 +57,7 @@ class Agent_Manager(object):
             agent.curr_location = Location(x, y)
             r = self.voxel_detection_distance
             self.claimed_voxels[agent_id] = set()
-            path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), self.map.evader_location, r)
-            print(len(path))
+            path = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), r)
             claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])
             self.claimed_voxels[agent_id] = claimed
             new_location = path.pop(0)  # Note: checked. The bug is not here. new_location is never an obstacle
