@@ -9,7 +9,9 @@ from skimage.measure import block_reduce
 import cv2
 from decentralized_search.srv import Tolerance
 
-shrinkage = 5  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+dilation = 7
+shrinkage = 10  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+
 
 class Map(object):
     def __init__(self, width, height, grid, resolution, origin):
@@ -23,7 +25,6 @@ class Map(object):
 
         self.x_max = self.occupancy.shape[0]
         self.y_max = self.occupancy.shape[1]
-        # print(self.occupancy)
 
         self.meters_per_cell = resolution * shrinkage
         self.pose_origin = origin
@@ -43,8 +44,9 @@ class Map(object):
 
     def shrink_map(self, grid, shrinkage):
         size = (shrinkage, shrinkage)
+        kernel = np.ones((3, 3), np.uint8)
+        grid = cv2.dilate(grid.astype(np.uint8), kernel, iterations=dilation)  # Add buffers to walls
         grid = block_reduce(grid, block_size=size, func=np.any)  # Reduce resolution
-        grid = cv2.dilate(grid.astype(np.uint8), (3, 3), iterations=2)  # Add buffers to walls
         return np.ceil(grid).astype(np.float)
 
     def get_voxel_neighbors(self, location, distance=1):
@@ -79,10 +81,6 @@ class Map(object):
 
     def distance(self, agent1, agent2):
         return agent1.distance(agent2.curr_location)
-
-    def detected_evader(self, location):
-        self.evader_detected = False if not location else True
-        self.evader_location = location
 
     def voxel_to_location(self, x, y):
         location_x = self.pose_origin.position.x + self.meters_per_cell * x
@@ -154,9 +152,6 @@ class Map(object):
 
     def get_path(self, location1, location2):
         # NOTE: All locations in this method are tuples representing voxels for efficiency
-        if self.is_obstacle(location2):
-          print(location2.x, location2.y)
-          print(self.is_obstacle(location2))
         assert not self.is_obstacle(location1)
         assert not self.is_obstacle(location2)
         return self.get_path_opt(location1, location2)

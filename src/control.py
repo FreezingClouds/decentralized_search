@@ -22,7 +22,7 @@ class AgentNode(object):
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
         self.r = rospy.Rate(10)
         self.K1 = 0.2
-        self.K2 = .5
+        self.K2 = 1
         self.curr_target_location = None
         self.curr_x = initial_x
         self.curr_y = initial_y
@@ -31,7 +31,7 @@ class AgentNode(object):
         rospy.wait_for_service("/tolerance")
         AgentNode.tol = tol_service().tolerance
 
-        wait = {0: 0, 1: 1, 2: 3, 3: 0}
+        wait = {0: 0, 1: 1, 2: 6, 3: 0}
         rospy.wait_for_service("/voxel_update")
         rospy.sleep(wait[self.id])
         self.run_control_loop()

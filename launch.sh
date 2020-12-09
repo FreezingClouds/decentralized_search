@@ -7,5 +7,5 @@ roslaunch --wait decentralized_search pursuer_2.launch &
 sleep .5
 roslaunch --wait decentralized_search pursuer_3.launch &
 sleep .5
-roslaunch --wait decentralized_search evader.launch &
-wait
+# roslaunch --wait decentralized_search evader.launch &
+# wait
