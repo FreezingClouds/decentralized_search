@@ -70,6 +70,8 @@ class Agent(object):
  
             point = (int(np.round(xCoord)), int(np.round(yCoord)))
             destination = Location(point[0], point[1])
+            if map.is_obstacle(destination):
+                destination = map.nearest_non_obstacle(destination)
             path = map.get_path(self.curr_location, destination)
             if len(path) == 0:
                 path = [self.curr_location]
