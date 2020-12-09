@@ -74,7 +74,6 @@ class Agent(object):
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
             bnds = [(1, map.x_max - 2), (1, map.y_max - 2)]
             # print(map.x_max, map.y_max)
-            x0 = (1, 1)
             res = differential_evolution(self.distanceSum, bnds, args=(map, pursuers), maxiter=1000)
 
             xCoord = res.x[0]
@@ -83,7 +82,7 @@ class Agent(object):
             point = (int(np.round(xCoord)), int(np.round(yCoord)))
             destination = Location(point[0], point[1])
             if map.is_obstacle(destination):
-                destination = map.nearest_non_obstacle(destination)
+                destination = map.nearest_non_obstacles(destination)
             path = map.get_path(self.curr_location, destination)
             if len(path) == 0:
                 path = [self.curr_location]
