@@ -101,7 +101,7 @@ class Agent_Manager(object):
     def in_vision_of(self, location1, location2, pose=0, fov=6.28):
         tol = 1
         ray = self.map.get_vision_ray(location1, location2, 20, True)
-        if abs(pose % 2 * pi - ray[1] % 2 * pi) < fov / 2:
+        if abs(pose % (2 * pi) - ray[1] % (2 * pi)) < fov / 2:
             dx = float(location2.x - location1.x)
             dy = float(location2.y - location1.y)
             return ray[0] + tol / 2 >= sqrt(dx ** 2 + dy ** 2)
