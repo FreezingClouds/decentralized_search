@@ -16,7 +16,7 @@ from visualization_msgs.msg import Marker
 from pursue_entities import Location, SwarmPoint
 
 dilation = 1
-shrinkage = 10  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+shrinkage = 15  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 
 class Map(object):
@@ -41,7 +41,7 @@ class Map(object):
 
         self.evader_location = None
 
-        self.tolerance_to_set = (self.meters_per_cell / 2) * .95
+        self.tolerance_to_set = self.meters_per_cell * .95
         rospy.Service("/tolerance", Tolerance, self.get_tolerance)
 
         self.neighbor_map = {}  # maps tuple to set of tuples that are non-obstacle neighbors (made for runtime)
@@ -157,7 +157,7 @@ class Map(object):
         while curr_node != start:
             curr_node = node_to_prev_node[curr_node]
             path.insert(0, curr_node)
-        return self.tuples_to_locations(path)
+        return self.tuples_to_locations(path)[1:]
 
     def get_path(self, location1, location2, unallowed=set()):
         # NOTE: All locations in this method are tuples representing voxels for efficiency
@@ -211,7 +211,7 @@ class Map(object):
         while dist <= max_range / self.meters_per_cell:
             xMap = int(location1.x / self.meters_per_cell + cos(theta) * dist)
             yMap = int(location1.y / self.meters_per_cell + sin(theta) * dist)
-            if visualize: vis.append((xMap * self.meters_per_cell, yMap * self.meters_per_cell))
+            if visualize: vis.append((xMap, yMap))
             if xMap < 0 or xMap > self.x_max or yMap < 0 or yMap > self.y_max:
                 if visualize: print("VISION: Out of bounds at voxel {x}, {y}".format(x=xMap, y=yMap))
                 break
