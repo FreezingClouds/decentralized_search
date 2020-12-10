@@ -57,7 +57,7 @@ class AgentNode(object):
                 pass
 
     def move_to_location(self, x, y):
-        dx, dy = self.move_to_frame("robot" + str(self.id), x, y)
+        self.move_to_frame("robot" + str(self.id), x, y)
         self.curr_x, self.curr_y = x, y
 
     def move_to_frame(self, robot_frame, x, y):
@@ -80,7 +80,7 @@ class AgentNode(object):
 
                 # dx = x - fromWorld.transform.translation.x
                 # dy = y - fromWorld.transform.translation.y
-                # r = sqrt(dx ** 2 + dy ** 2)
+
 
                 # ### START AUSTIN'S CODE
                 # bot_vector_x = np.array([np.cos(heading), np.sin(heading)])
@@ -90,6 +90,7 @@ class AgentNode(object):
 
                 rel_x = dt.x #self.project(bot_vector_x, target_vector)
                 rel_y = dt.y #self.project(bot_vector_y, target_vector)
+                r = sqrt(rel_x ** 2 + rel_y ** 2)
 
                 """if robot_frame == 'robot0':
                     print(target_vector)
@@ -115,7 +116,7 @@ class AgentNode(object):
                 control_command = Twist()
                 if r < AgentNode.tol ** 2:
                     self.pub.publish(control_command)
-                    return dx, dy
+                    return
                 control_command.linear.x = self.K1 * rel_x
                 control_command.angular.z = self.K2 * rel_y
 
