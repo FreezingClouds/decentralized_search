@@ -160,9 +160,6 @@ class Map(object):
         return self.tuples_to_locations(path)[1:]
 
     def get_path(self, location1, location2, unallowed=set()):
-        # NOTE: All locations in this method are tuples representing voxels for efficiency
-        assert not self.is_obstacle(location1)
-        assert not self.is_obstacle(location2)
         return self.get_path_opt(location1, location2, unallowed=set())
 
     def tuples_to_locations(self, list_of_tuples):
