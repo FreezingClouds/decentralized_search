@@ -56,6 +56,8 @@ class AgentNode(object):
                 pass
 
     def move_to_location(self, x, y):
+        print(' POOOOOOOOP ')
+        print(x, y)
         rospy.wait_for_service("/goals")
         response = self.service_goal(x, y, self.id)
         if response.received:

@@ -107,7 +107,7 @@ class Map(object):
     def is_obstacle(self, location):
         return self.occupancy[location.x, location.y] > .8
 
-    def get_path_opt(self, location1, location2):
+    def get_path_opt(self, location1, location2, unallowed=set()):
         start = (location1.x, location1.y)
         finish = (location2.x, location2.y)
 
@@ -131,6 +131,7 @@ class Map(object):
             else:
                 neighbors = self.get_voxel_neighbors(Location(curr_location[0], curr_location[1]), 1)
                 neighbors = self.locations_to_tuples(neighbors)
+                neighbors = [n for n in neighbors if n not in unallowed]
                 self.neighbor_map[curr_location] = neighbors
 
             for n in neighbors:
@@ -158,11 +159,11 @@ class Map(object):
             path.insert(0, curr_node)
         return self.tuples_to_locations(path)
 
-    def get_path(self, location1, location2):
+    def get_path(self, location1, location2, unallowed=set()):
         # NOTE: All locations in this method are tuples representing voxels for efficiency
         assert not self.is_obstacle(location1)
         assert not self.is_obstacle(location2)
-        return self.get_path_opt(location1, location2)
+        return self.get_path_opt(location1, location2, unallowed=set())
 
     def tuples_to_locations(self, list_of_tuples):
         return [Location(t[0], t[1]) for t in list_of_tuples]

@@ -67,6 +67,8 @@ class Agent_Manager(object):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
+        if service_request.id == 0:
+            print(x, y)
 
         if any([agent.curr_location.distance(self.evader.curr_location) < self.win_condition and self.map.evader_detected[i] for i, agent in enumerate(self.pursuers)]):
             print(' Target CAPTURED! ')

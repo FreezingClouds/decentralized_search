@@ -66,7 +66,11 @@ class Agent(object):
                 except StopIteration as e:
                     self.curr_path = least_resistance_path  # Edge case
                     break
-                path = map.get_path(self.curr_location, new_location)
+                if any(map.evader_detected):
+                    path = map.get_path(self.curr_location, new_location, claimed_voxels)
+                    path = map.get_path(self.curr_location, new_location) if len(path) <= 1 else path
+                else:
+                    path = map.get_path(self.curr_location, new_location)
                 if len(path) <= 1:
                     continue
                 tuple_path = map.locations_to_tuples(path)
