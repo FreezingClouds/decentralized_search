@@ -73,7 +73,9 @@ class Agent(object):
                     self.curr_path = least_resistance_path  # Edge case
                     break
                 if any(map.evader_detected) or num_options < 3:
+                    print('no more options')
                     path = map.get_path(self.curr_location, new_location, claimed_voxels)
+                    print(len(path))
                     path = map.get_path(self.curr_location, new_location) if len(path) <= 1 else path
                 else:
                     path = map.get_path(self.curr_location, new_location)

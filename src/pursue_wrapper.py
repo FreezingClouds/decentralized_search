@@ -87,6 +87,7 @@ class Agent_Manager(object):
             agent_id = service_request.id
             self.map.evader_detected[agent_id] = self.in_vision_of(Location(x, y), self.evader.curr_location, visualize=True)
             if self.map.evader_detected[agent_id]:
+                self.map.evader_location = self.evader.curr_location
                 print('Robot number {} has detected Raylen'.format(agent_id))
             agent = self.pursuers[agent_id]
             agent.curr_location = Location(x, y)
@@ -107,7 +108,6 @@ class Agent_Manager(object):
         else:
             agent = self.evader
             agent.curr_location = Location(x, y)
-            self.map.evader_location = agent.curr_location
             path = agent.get_path_evader(self.map, self.pursuers)
             new_location = path.pop(0)
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
