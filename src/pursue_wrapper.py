@@ -105,7 +105,7 @@ class Agent_Manager(object):
             self.cue_swarm_check.publish(Int8(1))
             if all(self.updated) or self.map.evader_location:
                 self.cue_swarm_update.publish(Int8(1))
-            print('Pursuer planning time: {} seconds'.format(time.time() - start))
+            # print('Pursuer planning time: {} seconds'.format(time.time() - start))
         else:
             agent = self.evader
             agent.curr_location = Location(x, y)
