@@ -21,7 +21,7 @@ class Location(object):
 
 class Agent(object):
     detection_radius = 10  # defined in meters
-    update_every = 10  # defined in meters
+    update_every = 2  # defined in meters
 
     def __init__(self, id, x, y, meters_per_cell=1):
         self.id = id
@@ -128,7 +128,7 @@ class Agent(object):
         # d1 = map.get_path_opt(eLoc, p1)
         # d2 = map.get_path_opt(eLoc, p2)
         # d3 = map.get_path_opt(eLoc, p3)
-
+        #
         # d1 = len(d1)
         # d2 = len(d2)
         # d3 = len(d3)

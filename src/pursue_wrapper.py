@@ -2,16 +2,15 @@
 """ Wrapper for multi-agent search and capture. Pseudo-code outlined below"""
 
 import numpy as np
-import time
-from math import *
-
 import rospy
+import tf2_ros
+import time
 from decentralized_search.srv import VoxelUpdate, VoxelUpdateResponse
+from math import *
 from nav_msgs.msg import OccupancyGrid
-from std_msgs.msg import Int8
-
 from pursue_entities import Location, Agent
 from pursue_map import Map
+from std_msgs.msg import Int8
 
 
 class Agent_Manager(object):
@@ -52,6 +51,10 @@ class Agent_Manager(object):
         # For finish/win indicator to shutdown
         self.finished = rospy.Publisher('/finished', Int8, queue_size=1)
 
+        # For robot pose retrieving purposes
+        self.tfBuffer = tf2_ros.Buffer()
+        self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
+
         voxel_grid = []
         for x in range(self.map.x_max):
             for y in range(self.map.y_max):
@@ -67,12 +70,7 @@ class Agent_Manager(object):
     def receive_voxel_update(self, service_request):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
-        if service_request.id == 0:
-            print("WEEWOOWEEOOO")
-            print(Location(service_request.x, service_request.y))
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
-        if service_request.id == 0:
-            print(x, y)
 
         if any([agent.curr_location.distance(self.evader.curr_location) < self.win_condition and self.map.evader_detected[i] for i, agent in enumerate(self.pursuers)]):
             print(' Target CAPTURED! ')
@@ -87,7 +85,7 @@ class Agent_Manager(object):
         if self.is_pursuer(service_request):
             start = time.time()
             agent_id = service_request.id
-            self.map.evader_detected[agent_id] = self.in_vision_of(Location(x, y), self.evader.curr_location)
+            self.map.evader_detected[agent_id] = self.in_vision_of(Location(x, y), self.evader.curr_location, visualize=True)
             if self.map.evader_detected[agent_id]:
                 print('Robot number {} has detected Raylen'.format(agent_id))
             agent = self.pursuers[agent_id]
@@ -114,8 +112,8 @@ class Agent_Manager(object):
             new_location = path.pop(0)
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
         coord_x, coord_y = coord_x + self.map.meters_per_cell / 2.0, coord_y + self.map.meters_per_cell / 2.0
-        if service_request.id == 0:
-            self.map.visualize_voxels([(new_location.x, new_location.y)])
+        # if service_request.id == 0:
+        #     self.map.visualize_voxels([(new_location.x, new_location.y)])
         return VoxelUpdateResponse(coord_x, coord_y)
 
     def is_pursuer(self, service_request):
@@ -153,15 +151,16 @@ class Agent_Manager(object):
             return True
         return False
 
-    def in_vision_of(self, location1, location2, view_dist=200, pose=0, fov=6.28, visualize=False):
+    def in_vision_of(self, location1, location2, view_dist=500, pose=0, fov=2 * pi, visualize=False):
         location1 = Location(*self.map.voxel_to_location(location1.x, location1.y))
         location2 = Location(*self.map.voxel_to_location(location2.x, location2.y))
-        tol = 1
         ray = self.map.get_vision_ray(location1, location2, view_dist, visualize)
-        if abs(pose % (2 * pi) - ray[1] % (2 * pi)) < fov / 2:
+        tar_angle = min(ray[1], 2 * pi - ray[1])
+        if abs(pose - tar_angle) <= fov / 2:
             dx = float(location2.x - location1.x)
             dy = float(location2.y - location1.y)
-            return ray[0] + tol / 2 >= sqrt(dx ** 2 + dy ** 2)
+            return ray[0] + self.map.meters_per_cell / 2 >= sqrt(dx ** 2 + dy ** 2)
+        print("Out of FOV len={p}, fov: {t} > {f}".format(p=pose, t=tar_angle, f=fov))
         return False
 
 

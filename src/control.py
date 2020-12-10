@@ -69,30 +69,31 @@ class AgentNode(object):
                 # heading = fromWorld.transform.rotation.z
 
                 self.publish_tf(self.id, x, y)
+
                 dt = self.tfBuffer.lookup_transform(robot_frame, "target" + str(self.id),
                                                     rospy.Time(0)).transform.translation
 
-                # if self.id == 0:
-                #     # print("-----------")
-                #     print([dt.x, dt.y])
-                    # print([rel_x, rel_y])
-
                 # if heading > pi:
                 #     heading -= 2 * pi
-
+                #
                 # dx = x - fromWorld.transform.translation.x
                 # dy = y - fromWorld.transform.translation.y
-
-
-                # ### START AUSTIN'S CODE
+                # r = sqrt(dx ** 2 + dy ** 2)
+                #
+                # # ### START AUSTIN'S CODE
                 # bot_vector_x = np.array([np.cos(heading), np.sin(heading)])
                 # bot_vector_y = np.array([np.cos(heading + pi/2), np.sin(heading + pi/2)])
                 #
-                # target_vector = np.array([dx, dy]) # / r
+                # target_vector = np.array([dx, dy])# / r
 
-                rel_x = dt.x #self.project(bot_vector_x, target_vector)
-                rel_y = dt.y #self.project(bot_vector_y, target_vector)
-                r = sqrt(rel_x ** 2 + rel_y ** 2)
+                rel_x = dt.x#self.project(bot_vector_x, target_vector)
+                rel_y = dt.y#self.project(bot_vector_y, target_vector)
+                r = sqrt(dt.x ** 2 + dt.y ** 2)
+
+                # if self.id == 0:
+                #     print("-----------")
+                #     print([dt.x, dt.y])
+                #     print([rel_x, rel_y])
 
                 """if robot_frame == 'robot0':
                     print(target_vector)
