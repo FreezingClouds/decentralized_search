@@ -15,8 +15,8 @@ from visualization_msgs.msg import Marker
 
 from pursue_entities import Location, SwarmPoint
 
-dilation = 8
-shrinkage = 8  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+dilation = 5
+shrinkage = 10  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 
 class Map(object):
@@ -41,7 +41,7 @@ class Map(object):
 
         self.evader_location = None
 
-        self.tolerance_to_set = self.meters_per_cell
+        self.tolerance_to_set = (self.meters_per_cell / 2) * .95
         rospy.Service("/tolerance", Tolerance, self.get_tolerance)
 
         self.neighbor_map = {}  # maps tuple to set of tuples that are non-obstacle neighbors (made for runtime)

@@ -77,6 +77,7 @@ class Agent_Manager(object):
             rospy.signal_shutdown('done')
 
         if self.is_pursuer(service_request):
+            start = time.time()
             agent_id = service_request.id
             self.map.evader_detected[agent_id] = self.in_vision_of(Location(x, y), self.evader.curr_location)
             if self.map.evader_detected[agent_id]:
@@ -101,6 +102,7 @@ class Agent_Manager(object):
             self.cue_swarm_check.publish(Int8(1))
             if all(self.updated) or self.map.evader_location:
                 self.cue_swarm_update.publish(Int8(1))
+            print('Pursuer planning time: {} seconds'.format(time.time() - start))
             return VoxelUpdateResponse(coord_x, coord_y)
         agent = self.evader
         agent.curr_location = Location(x, y)
