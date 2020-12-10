@@ -15,7 +15,7 @@ from pursue_map import Map
 
 
 class Agent_Manager(object):
-    def __init__(self, swarm_size=200):
+    def __init__(self, swarm_size=100):
         # Map Initialization
         occupancy_grid = rospy.wait_for_message('/map', OccupancyGrid)
         array_of_occupancy = np.array(occupancy_grid.data)
@@ -78,7 +78,7 @@ class Agent_Manager(object):
 
         if self.is_pursuer(service_request):
             agent_id = service_request.id
-            self.map.evader_detected[agent_id] = self.in_vision_of(Location(x, y), self.evader.curr_location, 500)
+            self.map.evader_detected[agent_id] = self.in_vision_of(Location(x, y), self.evader.curr_location)
             if self.map.evader_detected[agent_id]:
                 print('Robot number {} has detected Raylen'.format(agent_id))
             agent = self.pursuers[agent_id]
@@ -124,14 +124,14 @@ class Agent_Manager(object):
         pursuer_locations = np.vstack([np.array([p.curr_location.x, p.curr_location.y]) for p in self.pursuers])
         for point in self.map.swarm:
             point.move_one_step(self, self.map, pursuer_locations)
-        if time.time() - start > 2:
+        if time.time() - start > .5:
             print('Warning: updating swarm took {} seconds'.format(time.time() - start))
 
     def check_swarm_detection(self):
         start = time.time()
         for point in self.map.swarm:
             point.check_detected(self, self.map)
-        if time.time() - start > 2:
+        if time.time() - start > .5:
             print('Warning: checking swarm detection took more than 2 seconds')
 
     def in_detection_zone(self, location):

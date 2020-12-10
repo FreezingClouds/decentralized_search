@@ -35,7 +35,6 @@ class Agent(object):
             # Edge case for lose sight of evader
             locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
             if len(locations) == 0:
-                print('defaulting')
                 locations = []
                 covered = set()
                 prev = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y)]
@@ -83,15 +82,12 @@ class Agent(object):
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
             bnds = [(1, map.x_max - 2), (1, map.y_max - 2)]
             # print(map.x_max, map.y_max)
-            print('Boutta Res!')
             res = differential_evolution(self.distanceSum, bnds, args=(map, pursuers), maxiter=1000)
-            print('Got res!')
             xCoord = res.x[0]
             yCoord = res.x[1]
 
             point = (int(np.round(xCoord)), int(np.round(yCoord)))
             destination = Location(point[0], point[1])
-            print(destination.x, destination.y)
             if map.is_obstacle(destination):
                 destination = map.nearest_non_obstacles(destination)
             path = map.get_path(self.curr_location, destination)
@@ -158,7 +154,6 @@ class SwarmPoint(Agent):
         if any(map.evader_detected):
             self.curr_location = map.evader_location
         elif wrapper.in_detection_zone(self.curr_location):
-            # TODO: Edge case: all warm points in detection zone
             swarm_locations = [s.curr_location for s in map.swarm]
             swarm_locations.remove(self.curr_location)
-            self.curr_location = np.random.choice(swarm_locations)
+            self.curr_location = np.random.choice(swarm_locations) if np.random.random() < .9 else Location(*map.get_random_voxel_without_obstacle())
