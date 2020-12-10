@@ -33,8 +33,7 @@ class Agent_Manager(object):
         self.claimed_voxels = {i: set() for i in range(self.num_pursuers)}  # for pursuer planning
 
         for i in range(self.num_pursuers):  # Note: random b/c gets overwritten in 1st call to receive_voxel_update
-            x, y = self.map.get_random_voxel_without_obstacle()
-            self.pursuers = [Agent(i, x, y, self.map.meters_per_cell) for i in range(self.num_pursuers)]
+            self.pursuers = [Agent(i, 0, 0, self.map.meters_per_cell) for i in range(self.num_pursuers)]
 
         x_evader, y_evader = self.map.get_random_voxel_without_obstacle()
         x_evader, y_evader = 1000, 1000
