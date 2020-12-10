@@ -22,7 +22,7 @@ class Agent_Manager(object):
         metadata = occupancy_grid.info
         grid = np.vstack(np.split(array_of_occupancy, metadata.height))  # split into metadata.height groups
         self.map = Map(metadata.width, metadata.height, grid, metadata.resolution, metadata.origin)
-        self.win_condition = 1.0 / self.map.meters_per_cell  # distance in meters to considered captured
+        self.win_condition = 2.0 / self.map.meters_per_cell  # distance in meters to considered captured
 
         # Pursuer Initialization (random initial location...subject to change)
         self.num_pursuers = 3
@@ -68,7 +68,6 @@ class Agent_Manager(object):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
-        self.map.evader_location = self.evader.curr_location
 
         if any([agent.curr_location.distance(self.evader.curr_location) < self.win_condition and self.map.evader_detected[i] for i, agent in enumerate(self.pursuers)]):
             print(' Target CAPTURED! ')
@@ -86,11 +85,6 @@ class Agent_Manager(object):
             agent.curr_location = Location(x, y)
             r = self.voxel_detection_distance
 
-            # Filter for repeats
-            num_delete = [self.map.get_dist_between_tuples(self.map.voxel_to_location(l.x, l.y), (service_request.x, service_request.y)) for l in agent.curr_path[:3]]
-            num_delete = np.where([i for i, x in enumerate(num_delete) if x > self.map.tolerance_to_set])[0]
-            agent.curr_path = agent.curr_path[int(num_delete[0]):] if len(num_delete) > 0 else agent.curr_path
-
             # Algorithm
             path, updated = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), r)
             if updated:
@@ -103,12 +97,14 @@ class Agent_Manager(object):
             if all(self.updated) or self.map.evader_location:
                 self.cue_swarm_update.publish(Int8(1))
             print('Pursuer planning time: {} seconds'.format(time.time() - start))
-            return VoxelUpdateResponse(coord_x, coord_y)
-        agent = self.evader
-        agent.curr_location = Location(x, y)
-        path = agent.get_path_evader(self.map, self.pursuers)
-        new_location = path.pop(0)
-        coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
+        else:
+            agent = self.evader
+            agent.curr_location = Location(x, y)
+            self.map.evader_location = agent.curr_location
+            path = agent.get_path_evader(self.map, self.pursuers)
+            new_location = path.pop(0)
+            coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
+        coord_x, coord_y = coord_x + self.map.meters_per_cell / 2.0, coord_y + self.map.meters_per_cell / 2.0
         return VoxelUpdateResponse(coord_x, coord_y)
 
     def is_pursuer(self, service_request):
@@ -126,7 +122,7 @@ class Agent_Manager(object):
         pursuer_locations = np.vstack([np.array([p.curr_location.x, p.curr_location.y]) for p in self.pursuers])
         for point in self.map.swarm:
             point.move_one_step(self, self.map, pursuer_locations)
-        if time.time() - start > .5:
+        if time.time() - start > .2:
             print('Warning: updating swarm took {} seconds'.format(time.time() - start))
 
     def check_swarm_detection(self):
@@ -134,7 +130,7 @@ class Agent_Manager(object):
         for point in self.map.swarm:
             point.check_detected(self, self.map)
         if time.time() - start > .5:
-            print('Warning: checking swarm detection took more than 2 seconds')
+            print('Warning: checking swarm detection took more than .5 seconds')
 
     def in_detection_zone(self, location):
         return any([self.in_vision_of(location, agent.curr_location) for agent in self.pursuers])

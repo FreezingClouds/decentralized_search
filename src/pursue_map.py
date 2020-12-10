@@ -15,7 +15,7 @@ from visualization_msgs.msg import Marker
 
 from pursue_entities import Location, SwarmPoint
 
-dilation = 5
+dilation = 1
 shrinkage = 10  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 
@@ -100,8 +100,8 @@ class Map(object):
         return location_x, location_y
 
     def location_to_voxel(self, x, y):
-        voxel_x = np.rint((x - self.pose_origin.position.x) / self.meters_per_cell)
-        voxel_y = np.rint((y - self.pose_origin.position.y) / self.meters_per_cell)
+        voxel_x = round((x - self.pose_origin.position.x) / self.meters_per_cell)
+        voxel_y = round((y - self.pose_origin.position.y) / self.meters_per_cell)
         return int(voxel_x), int(voxel_y)
 
     def is_obstacle(self, location):

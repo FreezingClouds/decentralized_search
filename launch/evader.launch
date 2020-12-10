@@ -1,7 +1,7 @@
 <launch>
     <!-- Evader Node Here -->
 	<arg name="x_3" default="23" />
-	<arg name="y_3" default="20" />
+	<arg name="y_3" default="12" />
 	<arg name="theta_3" default="0" />
 
 	<node pkg="stdr_robot"

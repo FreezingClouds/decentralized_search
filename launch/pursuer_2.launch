@@ -1,6 +1,6 @@
 <launch>
     <arg name="x_1" default="10" />
-	<arg name="y_1" default="6" />
+	<arg name="y_1" default="8" />
 	<arg name="theta_1" default="0" />
 
 	<node pkg="stdr_robot"

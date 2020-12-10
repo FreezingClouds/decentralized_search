@@ -32,31 +32,33 @@ class Agent(object):
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0 \
                 or (any(map.evader_detected) and not self.curr_path[-1].equal_to(map.evader_location)):
             self.counter, valid_path = 0, False
-            # Edge case for lose sight of evader
-            locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
-            if len(locations) == 0:
-                locations = []
+            if any(map.evader_detected):
+                locations_to_densities = iter({map.evader_location: 20}.items())
+            else:
+                locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
+                if len(locations) == 0:
+                    locations = []
+                    covered = set()
+                    prev = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y)]
+                    for loc in prev:
+                        if (loc.x, loc.y) not in covered:
+                            locations.append(loc)
+                            covered = covered.union(map.tuples_of_box_around_point(loc.x, loc.y, r))
+
+                boundaries = [((max(loc.x - r, 0), min(loc.x + r, map.x_max)), (max(loc.y - r, 0), min(loc.y + r, map.y_max))) for loc in locations]
+                densities = [np.sum(map.num_swarm_points[x_bound[0]: x_bound[1] + 1, y_bound[0]: y_bound[1] + 1]) for x_bound, y_bound in boundaries]
+                locations_to_densities = dict(zip(locations, densities))
+                locations_to_densities = OrderedDict(sorted(locations_to_densities.items(), key=lambda item: item[1], reverse=True))
+
+                # RUNTIME STUFF: Filtering for algorithm runtime boost
+                filtered = OrderedDict()
                 covered = set()
-                prev = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y)]
-                for loc in prev:
+                for loc, density in locations_to_densities.items():
                     if (loc.x, loc.y) not in covered:
-                        locations.append(loc)
+                        filtered[loc] = density
                         covered = covered.union(map.tuples_of_box_around_point(loc.x, loc.y, r))
 
-            boundaries = [((max(loc.x - r, 0), min(loc.x + r, map.x_max)), (max(loc.y - r, 0), min(loc.y + r, map.y_max))) for loc in locations]
-            densities = [np.sum(map.num_swarm_points[x_bound[0]: x_bound[1] + 1, y_bound[0]: y_bound[1] + 1]) for x_bound, y_bound in boundaries]
-            locations_to_densities = dict(zip(locations, densities))
-            locations_to_densities = OrderedDict(sorted(locations_to_densities.items(), key=lambda item: item[1], reverse=True))
-
-            # RUNTIME STUFF: Filtering for algorithm runtime boost
-            filtered = OrderedDict()
-            covered = set()
-            for loc, density in locations_to_densities.items():
-                if (loc.x, loc.y) not in covered:
-                    filtered[loc] = density
-                    covered = covered.union(map.tuples_of_box_around_point(loc.x, loc.y, r))
-
-            locations_to_densities = iter(filtered.items())
+                locations_to_densities = iter(filtered.items())
             least_resistance_path, resistance = [self.curr_location], np.inf
             while not valid_path:
                 try:
