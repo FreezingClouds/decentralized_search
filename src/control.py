@@ -57,6 +57,8 @@ class AgentNode(object):
                 pass
 
     def move_to_location(self, x, y):
+        self.publish_tf(self.id, x, y)
+        rospy.sleep(.1)
         self.move_to_frame("robot" + str(self.id), x, y)
         self.curr_x, self.curr_y = x, y
 

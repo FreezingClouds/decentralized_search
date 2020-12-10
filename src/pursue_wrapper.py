@@ -24,7 +24,7 @@ class Agent_Manager(object):
         self.map = Map(metadata.width, metadata.height, grid, metadata.resolution, metadata.origin)
         self.win_condition = 2.0 / self.map.meters_per_cell  # distance in meters to considered captured
 
-        # Pursuer Initialization (random initial location...subject to change)
+        # Pursuer Initialization (random initial location...subject to change)m
         self.num_pursuers = 3
         self.updated = [False] * self.num_pursuers
         self.map.initialize_swarm(swarm_size)

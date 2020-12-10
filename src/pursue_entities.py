@@ -37,6 +37,7 @@ class Agent(object):
             self.counter, valid_path = 0, False
             if any(map.evader_detected):
                 locations_to_densities = iter({map.evader_location: 20}.items())
+                num_options = 1
             else:
                 locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
                 if len(locations) == 0:
@@ -62,14 +63,16 @@ class Agent(object):
                         covered = covered.union(map.tuples_of_box_around_point(loc.x, loc.y, r))
 
                 locations_to_densities = iter(filtered.items())
+                num_options = len(filtered)
             least_resistance_path, resistance = [self.curr_location], np.inf
+
             while not valid_path:
                 try:
                     new_location, density = next(locations_to_densities)
                 except StopIteration as e:
                     self.curr_path = least_resistance_path  # Edge case
                     break
-                if any(map.evader_detected):
+                if any(map.evader_detected) or num_options < 3:
                     path = map.get_path(self.curr_location, new_location, claimed_voxels)
                     path = map.get_path(self.curr_location, new_location) if len(path) <= 1 else path
                 else:
@@ -78,10 +81,12 @@ class Agent(object):
                     continue
                 tuple_path = map.locations_to_tuples(path)
                 resist = len(set(tuple_path).intersection(claimed_voxels)) / float(len(tuple_path))
+                print(resist)
                 valid_path = resistance <= max_intersection
                 self.curr_path = path
                 least_resistance_path = path if resist < resistance else least_resistance_path
                 resistance = min(resist, resistance)
+
         updated = self.counter == 0
         self.counter += 1
         return self.curr_path, updated
@@ -137,12 +142,18 @@ class SwarmPoint(Agent):
     def __init__(self, x, y, alpha1, alpha2, alpha3):
         super(SwarmPoint, self).__init__(-1, x, y, meters_per_cell=1)
         self.alphas = np.expand_dims(np.array([alpha1, alpha2, alpha3]), axis=1)
+        self.was_evader_location = False
+        self.prev_evader_location = None
+        self.detected_since_evader = False
         return
 
     def move_one_step(self, wrapper, map, pursuer_location_array):
         old_loc = self.curr_location
         if any(map.evader_detected):
             self.curr_location = map.evader_location
+            self.was_evader_location = True
+            self.prev_evader_location = (map.evader_location.x, map.evader_location.y)
+            self.detected_since_evader = False
         else:
             neighbors = map.get_voxel_neighbors(self.curr_location, distance=1)
             neighbors.append(self.curr_location)
@@ -162,7 +173,15 @@ class SwarmPoint(Agent):
     def check_detected(self, wrapper, map):
         if any(map.evader_detected):
             self.curr_location = map.evader_location
+            self.was_evader_location = True
+            self.prev_evader_location = (map.evader_location.x, map.evader_location.y)
+            self.detected_since_evader = True
         elif wrapper.in_detection_zone(self.curr_location):
-            swarm_locations = [s.curr_location for s in map.swarm]
-            swarm_locations.remove(self.curr_location)
-            self.curr_location = np.random.choice(swarm_locations) if np.random.random() < .9 else Location(*map.get_random_voxel_without_obstacle())
+            if self.was_evader_location and self.detected_since_evader:
+                self.curr_location = map.get_random_voxel_without_obstacle(self.curr_location, 3)
+            else:
+                swarm_locations = [s.curr_location for s in map.swarm]
+                swarm_locations.remove(self.curr_location)
+                self.curr_location = np.random.choice(swarm_locations) if np.random.random() < .99 else Location(*map.get_random_voxel_without_obstacle())
+        else:
+            self.detected_since_evader = False
