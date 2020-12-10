@@ -26,7 +26,7 @@ class AgentNode(object):
         self.r = rospy.Rate(50)
 
         self.K1 = 1
-        self.K2 = 1
+        self.K2 = 3
         self.curr_x = initial_x
         self.curr_y = initial_y
 
@@ -57,32 +57,40 @@ class AgentNode(object):
                 pass
 
     def move_to_location(self, x, y):
-        # rospy.wait_for_service("/goals")
-        # response = self.service_goal(x, y, self.id)
-        # self.publish_tf(self.id, x, y)
         dx, dy = self.move_to_frame("robot" + str(self.id), x, y)
         self.curr_x, self.curr_y = x, y
 
     def move_to_frame(self, robot_frame, x, y):
         while not rospy.is_shutdown():
             try:
-                fromWorld = self.tfBuffer.lookup_transform("map_static", robot_frame, rospy.Time(0))
-                heading = fromWorld.transform.rotation.z
-                if heading > pi:
-                    heading -= 2 * pi
+                # fromWorld = self.tfBuffer.lookup_transform("map_static", robot_frame, rospy.Time(0))
+                # heading = fromWorld.transform.rotation.z
 
-                dx = x - fromWorld.transform.translation.x
-                dy = y - fromWorld.transform.translation.y
-                r = sqrt(dx ** 2 + dy ** 2)
+                self.publish_tf(self.id, x, y)
+                dt = self.tfBuffer.lookup_transform(robot_frame, "target" + str(self.id),
+                                                    rospy.Time(0)).transform.translation
+
+                # if self.id == 0:
+                #     # print("-----------")
+                #     print([dt.x, dt.y])
+                    # print([rel_x, rel_y])
+
+                # if heading > pi:
+                #     heading -= 2 * pi
+
+                # dx = x - fromWorld.transform.translation.x
+                # dy = y - fromWorld.transform.translation.y
+                # r = sqrt(dx ** 2 + dy ** 2)
 
                 # ### START AUSTIN'S CODE
-                bot_vector_x = np.array([np.cos(heading), np.sin(heading)])
-                bot_vector_y = np.array([np.cos(heading + pi/2), np.sin(heading + pi/2)])
+                # bot_vector_x = np.array([np.cos(heading), np.sin(heading)])
+                # bot_vector_y = np.array([np.cos(heading + pi/2), np.sin(heading + pi/2)])
+                #
+                # target_vector = np.array([dx, dy]) # / r
 
-                target_vector = np.array([dx, dy]) # / r
+                rel_x = dt.x #self.project(bot_vector_x, target_vector)
+                rel_y = dt.y #self.project(bot_vector_y, target_vector)
 
-                rel_x = self.project(bot_vector_x, target_vector)
-                rel_y = self.project(bot_vector_y, target_vector)
                 """if robot_frame == 'robot0':
                     print(target_vector)
                     print(rel_x, rel_y)"""
@@ -119,16 +127,16 @@ class AgentNode(object):
     def project(self, vector1, vector2):
         return np.sum(vector1 * vector2)
 
-    # def publish_tf(self, id, x, y):
-    #     t = TransformStamped()
-    #     t.header.frame_id = "map_static"
-    #     t.header.stamp = rospy.Time.now()
-    #     t.child_frame_id = "target" + str(id)
-    #     t.transform.translation.x = x
-    #     t.transform.translation.y = y
-    #     t.transform.rotation.w = 1.0
-    #     tfm = tf2_msgs.msg.TFMessage([t])
-    #     self.pub_tf.publish(tfm)
+    def publish_tf(self, id, x, y):
+        t = TransformStamped()
+        t.header.frame_id = "map_static"
+        t.header.stamp = rospy.Time.now()
+        t.child_frame_id = "target" + str(id)
+        t.transform.translation.x = x
+        t.transform.translation.y = y
+        t.transform.rotation.w = 1.0
+        tfm = tf2_msgs.msg.TFMessage([t])
+        self.pub_tf.publish(tfm)
 
 
 if __name__ == '__main__':
