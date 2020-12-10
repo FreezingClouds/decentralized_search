@@ -16,7 +16,7 @@ from visualization_msgs.msg import Marker
 from pursue_entities import Location, SwarmPoint
 
 dilation = 2
-shrinkage = 15  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
+shrinkage = 8  # INTEGER. The higher, the more we shrink resolution of Occupancy Grid
 
 
 class Map(object):
@@ -184,7 +184,6 @@ class Map(object):
           currLocation = heapq.heappop(voxHeap)
           currLocation = currLocation[1]
           if not self.is_obstacle(Location(currLocation[0], currLocation[1])):
-            print('Done!')
             return Location(currLocation[0], currLocation[1])
           neighbors = list(self.tuples_of_box_around_point(currLocation[0], currLocation[1], 1))
           neighbors.remove(currLocation)
@@ -196,7 +195,7 @@ class Map(object):
           for loc in neighbors:
             heapq.heappush(voxHeap, (loc.distance(location), (loc.x, loc.y)))
   
-    def get_vision_ray(self, location1, location2, max_range=200, visualize=False):
+    def get_vision_ray(self, location1, location2, max_range=500, visualize=False):
         dx = float(location2.x - location1.x)
         dy = float(location2.y - location1.y)
         theta = pi
@@ -213,10 +212,8 @@ class Map(object):
             yMap = int(location1.y / self.meters_per_cell + sin(theta) * dist)
             if visualize: vis.append((xMap, yMap))
             if xMap < 0 or xMap > self.x_max or yMap < 0 or yMap > self.y_max:
-                if visualize: print("VISION: Out of bounds at voxel {x}, {y}".format(x=xMap, y=yMap))
                 break
             if self.is_obstacle(Location(xMap, yMap)):
-                if visualize: print("VISION: Hit wall at voxel {x}, {y}".format(x=xMap, y=yMap))
                 break
             dist += 1
 
@@ -246,4 +243,3 @@ class Map(object):
             else:
                 m.colors.append(ColorRGBA(0, 0.5, 1, 0.4))
         self.vis.publish(m)
-        print("VISION: Published voxels.")
