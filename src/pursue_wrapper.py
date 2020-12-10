@@ -55,10 +55,11 @@ class Agent_Manager(object):
         voxel_grid = []
         for x in range(self.map.x_max):
             for y in range(self.map.y_max):
-                voxel_grid.append((x, y))
-        while not rospy.is_shutdown():
-            rospy.sleep(20)
-            self.map.visualize_voxels(voxel_grid)
+                if True:#self.map.is_obstacle(Location(x, y)):
+                    voxel_grid.append((x, y))
+        # while not rospy.is_shutdown():
+        #     rospy.sleep(10)
+        #     self.map.visualize_voxels(voxel_grid)
 
         rospy.spin()
         return
@@ -66,10 +67,17 @@ class Agent_Manager(object):
     def receive_voxel_update(self, service_request):
         """ Given a service_request consisting of a location, and respective agent ID,
             return a new voxel location for the agent to travel to."""
+        if service_request.id == 0:
+            print("WEEWOOWEEOOO")
+            print(Location(service_request.x, service_request.y))
         x, y = self.map.location_to_voxel(service_request.x, service_request.y)
 
         if any([agent.curr_location.distance(self.evader.curr_location) < self.win_condition and self.map.evader_detected[i] for i, agent in enumerate(self.pursuers)]):
             print(' Target CAPTURED! ')
+            print([str(agent.curr_location) for agent in self.pursuers])
+            print(self.evader.curr_location)
+            print([agent.curr_location.distance(self.evader.curr_location) for agent in self.pursuers])
+            print(self.win_condition)
             self.finished.publish(Int8(1))
             rospy.sleep(1)
             rospy.signal_shutdown('done')
@@ -104,6 +112,8 @@ class Agent_Manager(object):
             new_location = path.pop(0)
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
         coord_x, coord_y = coord_x + self.map.meters_per_cell / 2.0, coord_y + self.map.meters_per_cell / 2.0
+        if service_request.id == 0:
+            self.map.visualize_voxels([(new_location.x, new_location.y)])
         return VoxelUpdateResponse(coord_x, coord_y)
 
     def is_pursuer(self, service_request):

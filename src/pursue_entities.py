@@ -16,6 +16,9 @@ class Location(object):
     def equal_to(self, location):
         return location.x == self.x and location.y == self.y
 
+    def __str__(self):
+        return "({x}, {y})".format(x=self.x, y=self.y)
+
 class Agent(object):
     detection_radius = 10  # defined in meters
     update_every = 10  # defined in meters

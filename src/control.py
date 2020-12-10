@@ -8,6 +8,7 @@ from geometry_msgs.msg import Vector3, Twist, TransformStamped
 from geometry_msgs.msg import Twist
 from decentralized_search.srv import VoxelUpdate, GoalUpdate, Tolerance
 from std_msgs.msg import Int8
+from math import *
 
 
 class AgentNode(object):
@@ -21,10 +22,10 @@ class AgentNode(object):
         self.service_goal = rospy.ServiceProxy("/goals", GoalUpdate)
         self.tfBuffer = tf2_ros.Buffer()
         self.tfListener = tf2_ros.TransformListener(self.tfBuffer)
-        self.r = rospy.Rate(10)
+        self.r = rospy.Rate(50)
 
-        self.K1 = .3
-        self.K2 = 1
+        self.K1 = 1
+        self.K2 = 5
         self.curr_target_location = None
         self.curr_x = initial_x
         self.curr_y = initial_y
@@ -52,33 +53,68 @@ class AgentNode(object):
                 rospy.sleep(self.after_wait[self.id]) if self.first else None
                 self.first = False
                 self.move_to_location(response.x, response.y)
-            except rospy.service.ServiceException as e:
+            except rospy.service.ServiceException:
                 pass
 
     def move_to_location(self, x, y):
-        rospy.wait_for_service("/goals")
-        response = self.service_goal(x, y, self.id)
-        if response.received:
-            self.move_to_frame("robot" + str(self.id), "target" + str(self.id))
-            self.curr_x, self.curr_y = x, y
+        # rospy.wait_for_service("/goals")
+        # response = self.service_goal(x, y, self.id)
+        if self.id == 0:
+            print([self.curr_x, self.curr_y, x, y])
+        # self.publish_tf(self.id, x, y)
+        dx, dy = self.move_to_frame("robot" + str(self.id), x, y)
+        if self.id == 0:
+            print([dx, dy])
+        self.curr_x, self.curr_y = x, y
 
-    def move_to_frame(self, robot_frame, target_frame):
+    def move_to_frame(self, robot_frame, x, y):
         while not rospy.is_shutdown():
             try:
-                trans = self.tfBuffer.lookup_transform(robot_frame, target_frame, rospy.Time(0))
-                dx = trans.transform.translation.x
-                dy = trans.transform.translation.y
+                fromWorld = self.tfBuffer.lookup_transform("map_static", robot_frame, rospy.Time(0))
+                heading = fromWorld.transform.rotation.z
+                heading = heading % (2 * pi)
+                if heading > pi:
+                    heading -= 2 * pi
+                dx = x - fromWorld.transform.translation.x
+                dy = y - fromWorld.transform.translation.y
+                r = sqrt(dx ** 2 + dy ** 2)
+                theta = pi
+                if dx == 0:
+                    theta = pi / 2 if dy > 0 else -pi / 2
+                elif dx > 0:
+                    theta = atan(dy / dx)
+                else:
+                    theta += atan(dy / dx)
+                dtheta = heading - theta
+                dtheta = dtheta % (2 * pi)
+                if dtheta > pi:
+                    dtheta -= 2 * pi
+                rel_x = r * cos(dtheta)
+                rel_y = -r * sin(dtheta)
+                if robot_frame == "robot0":
+                    print([fromWorld.transform.translation.x, fromWorld.transform.translation.y, dtheta])
                 control_command = Twist()
-                if dx ** 2 + dy ** 2 < AgentNode.tol ** 2:
+                if r < AgentNode.tol ** 2:
                     self.pub.publish(control_command)
-                    return
-                control_command.linear.x = self.K1 * dx
-                control_command.angular.z = self.K2 * dy
+                    return dx, dy
+                control_command.linear.x = self.K1 * rel_x
+                control_command.angular.z = self.K2 * rel_y
 
                 self.pub.publish(control_command)
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException, rospy.exceptions.ROSException):
                 pass
             self.r.sleep()
+
+    # def publish_tf(self, id, x, y):
+    #     t = TransformStamped()
+    #     t.header.frame_id = "map_static"
+    #     t.header.stamp = rospy.Time.now()
+    #     t.child_frame_id = "target" + str(id)
+    #     t.transform.translation.x = x
+    #     t.transform.translation.y = y
+    #     t.transform.rotation.w = 1.0
+    #     tfm = tf2_msgs.msg.TFMessage([t])
+    #     self.pub_tf.publish(tfm)
 
 
 if __name__ == '__main__':
