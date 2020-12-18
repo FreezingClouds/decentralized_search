@@ -20,8 +20,8 @@ class Location(object):
         return "({x}, {y})".format(x=self.x, y=self.y)
 
 class Agent(object):
-    detection_radius = 10  # defined in meters
-    update_every = 2  # defined in meters
+    detection_radius = 3 # defined in meters
+    update_every = 5  # defined in meters
 
     def __init__(self, id, x, y, meters_per_cell=1):
         self.id = id
@@ -29,16 +29,20 @@ class Agent(object):
         self.curr_path = []
         self.update_every_k_steps = Agent.update_every / meters_per_cell
         self.counter = 0
+        self.towards_evader = False
         return
 
     def get_path(self, map, claimed_voxels, r=1):
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0 \
-                or (any(map.evader_detected) and not self.curr_path[-1].equal_to(map.evader_location)):
+                or (any(map.evader_detected) and not self.towards_evader) or \
+                (map.evader_detected[self.id] and self.curr_location.distance(map.evader_location) * map.meters_per_cell < 3):
             self.counter, valid_path = 0, False
             if any(map.evader_detected):
                 locations_to_densities = iter({map.evader_location: 20}.items())
                 num_options = 1
+                self.towards_evader = True
             else:
+                self.towards_evader = False
                 locations = [s.curr_location for s in map.swarm if (s.curr_location.x, s.curr_location.y) not in claimed_voxels]
                 if len(locations) == 0:
                     locations = []
@@ -73,9 +77,7 @@ class Agent(object):
                     self.curr_path = least_resistance_path  # Edge case
                     break
                 if any(map.evader_detected) or num_options < 3:
-                    print('no more options')
                     path = map.get_path(self.curr_location, new_location, claimed_voxels)
-                    print(len(path))
                     path = map.get_path(self.curr_location, new_location) if len(path) <= 1 else path
                 else:
                     path = map.get_path(self.curr_location, new_location)
@@ -83,7 +85,6 @@ class Agent(object):
                     continue
                 tuple_path = map.locations_to_tuples(path)
                 resist = len(set(tuple_path).intersection(claimed_voxels)) / float(len(tuple_path))
-                print(resist)
                 valid_path = resistance <= max_intersection
                 self.curr_path = path
                 least_resistance_path = path if resist < resistance else least_resistance_path
@@ -97,7 +98,6 @@ class Agent(object):
         self.counter += 1
         if self.counter == self.update_every_k_steps or len(self.curr_path) == 0:
             bnds = [(1, map.x_max - 2), (1, map.y_max - 2)]
-            # print(map.x_max, map.y_max)
             res = differential_evolution(self.distanceSum, bnds, args=(map, pursuers), maxiter=1000)
             xCoord = res.x[0]
             yCoord = res.x[1]
@@ -113,30 +113,19 @@ class Agent(object):
         return self.curr_path
 
     def distanceSum(self, coords, map, pursuers):
-        #eLoc = Location(p[0], p[1])
         x = int(coords[0])
         y = int(coords[1])
         eLoc = Location(x, y)
         p1 = pursuers[0].curr_location
         p2 = pursuers[1].curr_location
         p3 = pursuers[2].curr_location
-        #dist1 = eLoc.distance(p1)
-        #dist2 = eLoc.distance(p2)
-        #dist3 = eLoc.distance(p3)
-        #return dist1 + dist2 + dist3
+
         d1 = eLoc.distance(p1)
         d2 = eLoc.distance(p2)
         d3 = eLoc.distance(p3)
-        # d1 = map.get_path_opt(eLoc, p1)
-        # d2 = map.get_path_opt(eLoc, p2)
-        # d3 = map.get_path_opt(eLoc, p3)
-        #
-        # d1 = len(d1)
-        # d2 = len(d2)
-        # d3 = len(d3)
+
         distArray = np.array([d1, d2, d3])
         sortedArray = np.sort(distArray)
-        #print(sortedArray)
 
         return np.exp(-sortedArray[0]) + np.exp(-sortedArray[1]) + np.exp(-sortedArray[2])
 
@@ -144,9 +133,10 @@ class SwarmPoint(Agent):
     def __init__(self, x, y, alpha1, alpha2, alpha3):
         super(SwarmPoint, self).__init__(-1, x, y, meters_per_cell=1)
         self.alphas = np.expand_dims(np.array([alpha1, alpha2, alpha3]), axis=1)
+        self.num_steps = 0
+        self.curr_direction = (0, 0)
         self.was_evader_location = False
         self.prev_evader_location = None
-        self.detected_since_evader = False
         return
 
     def move_one_step(self, wrapper, map, pursuer_location_array):
@@ -155,19 +145,26 @@ class SwarmPoint(Agent):
             self.curr_location = map.evader_location
             self.was_evader_location = True
             self.prev_evader_location = (map.evader_location.x, map.evader_location.y)
-            self.detected_since_evader = False
-        else:
-            neighbors = map.get_voxel_neighbors(self.curr_location, distance=1)
-            neighbors.append(self.curr_location)
-            num_neighbors = len(neighbors)
+        elif self.num_steps <= 0:
+            neighbors = map.get_voxel_neighbors(self.curr_location, distance=1) + [self.curr_location]
             neighbor_array = np.expand_dims(np.array([[l.x, l.y] for l in neighbors]), axis=0)  # 1 x neighbors x 2
             neighbor_array = np.repeat(neighbor_array, 3, axis=0)  # 3 x neighbors x 2
-            pursuer_location_array = np.repeat(np.expand_dims(pursuer_location_array, axis=1), num_neighbors, axis=1)  # 3 x neighbors x 2
+            pursuer_location_array = np.repeat(np.expand_dims(pursuer_location_array, axis=1), len(neighbors), axis=1)  # 3 x neighbors x 2
             square_dist = np.sqrt(np.sum(np.square(neighbor_array - pursuer_location_array), axis=2))  # 3 x neighbors
             weighted_dist = self.alphas * square_dist # 3 x neighbors
             prob = np.sum(weighted_dist, axis=0).flatten()
-            prob = np.exp(2 * np.array(prob))
-            self.curr_location = np.random.choice(neighbors, p=prob / np.sum(prob))
+            prob = np.exp(np.array(prob))
+            choice_loc = np.random.choice(neighbors, p=prob / np.sum(prob))
+            self.num_steps = int(np.random.randint(1, 6) / map.meters_per_cell)
+            self.curr_direction = (choice_loc.x - self.curr_location.x, choice_loc.y - self.curr_location.y)
+            self.curr_location = choice_loc
+        else:
+            loc = (self.curr_location.x, self.curr_location.y)
+            steps = np.random.randint(0, min(4, self.num_steps))
+            new_loc = loc + self.curr_direction * steps
+            new_loc = (max(min(new_loc[0], map.x_max - 1), 0), max(min(new_loc[1], map.y_max - 1), 0))
+            self.curr_location = Location(*new_loc)
+            self.num_steps -= 1
         map.num_swarm_points[old_loc.x, old_loc.y] -= 1
         map.num_swarm_points[self.curr_location.x, self.curr_location.y] += 1
         return
@@ -177,13 +174,9 @@ class SwarmPoint(Agent):
             self.curr_location = map.evader_location
             self.was_evader_location = True
             self.prev_evader_location = (map.evader_location.x, map.evader_location.y)
-            self.detected_since_evader = True
-        elif wrapper.in_detection_zone(self.curr_location):
-            if self.was_evader_location and self.detected_since_evader:
-                self.curr_location = map.get_random_voxel_without_obstacle(self.curr_location, 3)
-            else:
-                swarm_locations = [s.curr_location for s in map.swarm]
-                swarm_locations.remove(self.curr_location)
-                self.curr_location = np.random.choice(swarm_locations) if np.random.random() < .99 else Location(*map.get_random_voxel_without_obstacle())
+        elif wrapper.in_detection_zone(self.curr_location) and self.was_evader_location:
+            self.move_one_step(wrapper, map, np.vstack([np.array([p.curr_location.x, p.curr_location.y]) for p in wrapper.pursuers]))
+            self.was_evader_location = False
         else:
-            self.detected_since_evader = False
+            swarm_locations = [s.curr_location for s in map.swarm]
+            self.curr_location = np.random.choice(swarm_locations) if np.random.random() < .99 else Location(*map.get_random_voxel_without_obstacle())

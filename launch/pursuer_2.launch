@@ -1,5 +1,5 @@
 <launch>
-    <arg name="x_1" default="27" />
+    <arg name="x_1" default="3" />
 	<arg name="y_1" default="10" />
 	<arg name="theta_1" default="0" />
 

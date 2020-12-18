@@ -8,7 +8,7 @@
 	      pkg="stdr_server" 
 	      name="stdr_server" 
               output="screen" 
-              args="$(find decentralized_search)/maps/frieburg.yaml"/>
+              args="$(find decentralized_search)/maps/hospital_section2.yaml"/>
 
 	<node pkg="tf" 
               type="static_transform_publisher" 

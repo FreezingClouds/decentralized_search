@@ -36,8 +36,8 @@ class AgentNode(object):
         rospy.Subscriber("/finished", Int8, self.shutdown)
 
         self.first = True
-        before_wait = {0: 0, 1: 3, 2: 10, 3: 0}
-        self.after_wait = {0: 15, 1: 12, 2: 5, 3: 15}
+        before_wait = {0: 0, 1: 5, 2: 10, 3: 0}
+        self.after_wait = {0: 13, 1: 10, 2: 5, 3: 15}
         rospy.wait_for_service("/voxel_update")
         rospy.sleep(before_wait[self.id])
         self.run_control_loop()

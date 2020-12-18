@@ -25,8 +25,8 @@ class Map(object):
             rospy.signal_shutdown('Shrinkage should not be <1. The map is dense enough already you donut.')
             return
         self.occupancy = self.shrink_map(grid, shrinkage)
-        # plt.imshow(self.occupancy, cmap='hot', origin='lower')
-        # plt.show()
+        plt.imshow(self.occupancy, cmap='hot', origin='lower')
+        plt.show()
         self.occupancy = np.swapaxes(self.occupancy, 0, 1)  # need to swap
 
         self.x_max = self.occupancy.shape[0]
@@ -107,7 +107,10 @@ class Map(object):
     def is_obstacle(self, location):
         return self.occupancy[location.x, location.y] > .8
 
-    def get_path_opt(self, location1, location2, unallowed=set()):
+    def get_path_opt(self, location1, location2, unallowed=set(), visual=False):
+        dum = np.zeros(self.occupancy.shape)
+
+
         start = (location1.x, location1.y)
         finish = (location2.x, location2.y)
 
@@ -122,6 +125,7 @@ class Map(object):
             if len(priority_queue) == 0:
                 break
             distance_to_curr, curr_location = heapq.heappop(priority_queue)
+            dum[curr_location[0], curr_location[1]] = distance_to_curr
             visited.add(curr_location)
             if curr_location == finish:
                 break
@@ -131,26 +135,31 @@ class Map(object):
             else:
                 neighbors = self.get_voxel_neighbors(Location(curr_location[0], curr_location[1]), 1)
                 neighbors = self.locations_to_tuples(neighbors)
-                neighbors = [n for n in neighbors if n not in unallowed]
                 self.neighbor_map[curr_location] = neighbors
 
             for n in neighbors:
                 if n not in visited:  # if it hasn't been visited, there's a possibility of getting better path
                     nodes_in_pq = (list(map(lambda x: x[1], priority_queue)))
+                    extra_cost = 500 if n in unallowed else 0
                     if n in nodes_in_pq:  # if it's currently in the pq, update the priority
                         index = nodes_in_pq.index(n)
-                        curr_neighbor_dist = distance_to_curr + self.get_dist_between_tuples(curr_location, n)
-                        prev_dist = priority_queue[index][0] - self.get_dist_between_tuples(n, finish)  # Subtract out heuristic
+                        curr_neighbor_dist = distance_to_curr + self.get_dist_between_tuples(curr_location, n) + extra_cost
+                        prev_dist = priority_queue[index][0] - self.get_dist_between_tuples(n, finish) # Subtract out heuristic
                         if curr_neighbor_dist < prev_dist:
                             priority_queue[index] = (curr_neighbor_dist + self.get_dist_between_tuples(n, finish), n)  # Add heuristic
                             node_to_prev_node[n] = curr_location
                     else:  # otherwise add it to the pq
-                        heapq.heappush(priority_queue, (distance_to_curr + self.get_dist_between_tuples(curr_location, n) + self.get_dist_between_tuples(n, finish), n))
+                        heapq.heappush(priority_queue, (distance_to_curr + self.get_dist_between_tuples(curr_location, n) + extra_cost + self.get_dist_between_tuples(n, finish), n))
                         node_to_prev_node[n] = curr_location
 
         # Getting the path:
         if finish not in node_to_prev_node.keys():
             return self.tuples_to_locations([start])  # Returns only the first node if there is no path
+
+        import matplotlib.pyplot as plt
+        if visual:
+            plt.imshow(dum.T, origin='lower')
+            plt.show()
 
         curr_node = finish
         path = [finish]
@@ -160,7 +169,7 @@ class Map(object):
         return self.tuples_to_locations(path)[1:]
 
     def get_path(self, location1, location2, unallowed=set()):
-        return self.get_path_opt(location1, location2, unallowed=set())
+        return self.get_path_opt(location1, location2, unallowed=unallowed, visual=False)
 
     def tuples_to_locations(self, list_of_tuples):
         return [Location(t[0], t[1]) for t in list_of_tuples]

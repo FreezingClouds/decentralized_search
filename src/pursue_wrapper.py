@@ -74,10 +74,6 @@ class Agent_Manager(object):
 
         if any([agent.curr_location.distance(self.evader.curr_location) < self.win_condition and self.map.evader_detected[i] for i, agent in enumerate(self.pursuers)]):
             print(' Target CAPTURED! ')
-            print([str(agent.curr_location) for agent in self.pursuers])
-            print(self.evader.curr_location)
-            print([agent.curr_location.distance(self.evader.curr_location) for agent in self.pursuers])
-            print(self.win_condition)
             self.finished.publish(Int8(1))
             rospy.sleep(1)
             rospy.signal_shutdown('done')
@@ -94,17 +90,30 @@ class Agent_Manager(object):
             r = self.voxel_detection_distance
 
             # Algorithm
-            path, updated = agent.get_path(self.map, set.union(*self.claimed_voxels.values()), r)
+            other_claims = [v for k, v in self.claimed_voxels.items() if k != agent_id]
+            unallowed = set.union(*other_claims)
+            path, updated = agent.get_path(self.map, unallowed, r)
+
+            # import matplotlib.pyplot as plt
+            # test = unallowed
+            # dum = np.zeros(self.map.occupancy.shape)
+            # for c in test:
+            #     dum[c[0], c[1]] = 5
+            # dum += self.map.occupancy
+            # plt.imshow(dum.T, origin='lower')
+            # plt.show()
+
             if updated:
                 claimed = set.union(*[set(self.map.locations_to_tuples(self.map.get_voxel_neighbors(p, r))) for p in path])
                 self.claimed_voxels[agent_id] = claimed
+
             new_location = path.pop(0)  # mutates in place
             coord_x, coord_y = self.map.voxel_to_location(new_location.x, new_location.y)
             self.updated[agent_id] = True
             self.cue_swarm_check.publish(Int8(1))
             if all(self.updated) or self.map.evader_location:
                 self.cue_swarm_update.publish(Int8(1))
-            # print('Pursuer planning time: {} seconds'.format(time.time() - start))
+            print('Pursuer planning time {} seconds.'.format(time.time() - start))
         else:
             agent = self.evader
             agent.curr_location = Location(x, y)
